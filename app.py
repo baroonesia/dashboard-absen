@@ -118,6 +118,13 @@ class PDF(FPDF):
         self.cell(0, 10, 'LAPORAN REKAPITULASI ABSENSI ONLINE', 0, 1, 'C')
 
 def generate_pdf(df_source, year, month):
+    # --- PEMBERSIHAN DATA (Mencegah "None") ---
+    df_source = df_source.copy()
+    df_source['Nama'] = df_source['Nama'].fillna("Tanpa Nama")
+    df_source['Jam_Masuk'] = df_source['Jam_Masuk'].fillna("-").astype(str)
+    df_source['Jam_Pulang'] = df_source['Jam_Pulang'].fillna("-").astype(str)
+    df_source['Status_Data'] = df_source['Status_Data'].fillna("Tidak Lengkap").astype(str)
+
     pdf = PDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
     num_days = calendar.monthrange(year, month)[1]
@@ -130,32 +137,42 @@ def generate_pdf(df_source, year, month):
     pdf.cell(0, 5, f"PERIODE: {nama_bulan} {year}", 0, 1, 'L')
     pdf.ln(2)
 
+    # Header Tabel
     pdf.set_font("Arial", 'B', 6)
     pdf.cell(col_no, 12, 'No', 1, 0, 'C')
     pdf.cell(col_nama, 12, 'Nama Pegawai', 1, 0, 'C')
     for d in range(1, num_days+1):
         wk = calendar.weekday(year, month, d)
-        pdf.set_fill_color(200,200,200) if wk >= 5 else pdf.set_fill_color(255,255,255)
+        pdf.set_fill_color(220,220,220) if wk >= 5 else pdf.set_fill_color(255,255,255)
         pdf.cell(col_day, 12, str(d), 1, 0, 'C', fill=True)
     pdf.cell(col_summary, 12, 'HADIR', 1, 0, 'C')
     pdf.cell(col_summary, 12, 'ALPA', 1, 0, 'C')
     pdf.cell(col_summary, 12, 'TDK LKP', 1, 1, 'C')
 
+    # Isi Data Pegawai
     pegawai = sorted(df_source['Nama'].unique())
     for idx, nama in enumerate(pegawai, 1):
         h, a, tl = 0, 0, 0
         pdf.set_font("Arial", '', 6)
         pdf.cell(col_no, 10, str(idx), 1, 0, 'C')
-        pdf.cell(col_nama, 10, nama[:18], 1, 0, 'L')
+        pdf.cell(col_nama, 10, str(nama)[:18], 1, 0, 'L')
         
         for d in range(1, num_days+1):
-            curr = pd.Timestamp(year, month, d).date()
-            row = df_source[(df_source['Nama'] == nama) & (df_source['Tanggal'] == curr)]
-            fill, txt = False, ""
+            curr_date = pd.Timestamp(year, month, d).date()
+            # Filter baris berdasarkan nama dan tanggal
+            row = df_source[(df_source['Nama'] == nama) & (df_source['Tanggal'] == curr_date)]
             
+            fill, txt = False, ""
             if not row.empty:
-                m, p = row.iloc[0]['Jam_Masuk'], row.iloc[0]['Jam_Pulang']
-                if row.iloc[0]['Status_Data'] == "Lengkap":
+                m = row.iloc[0]['Jam_Masuk']
+                p = row.iloc[0]['Jam_Pulang']
+                stat = row.iloc[0]['Status_Data']
+                
+                # Pastikan m dan p bukan string 'None' (hasil bacaan Sheets)
+                m = "-" if m == "None" or m == "nan" else m
+                p = "-" if p == "None" or p == "nan" else p
+
+                if stat == "Lengkap" and m != "-" and p != "-":
                     pdf.set_fill_color(144, 238, 144); txt = f"{m}\n{p}"; h += 1
                 else:
                     pdf.set_fill_color(255, 255, 102); txt = f"{m if m!='-' else p}"; tl += 1
@@ -171,11 +188,12 @@ def generate_pdf(df_source, year, month):
             pdf.set_xy(x, y+1); pdf.set_font("Arial",'',4); pdf.multi_cell(col_day, 3, txt, 0, 'C')
             pdf.set_xy(x+col_day, y); pdf.set_font("Arial",'',6)
         
+        # Kolom Summary di Kanan
         pdf.cell(col_summary, 10, str(h), 1, 0, 'C')
         pdf.cell(col_summary, 10, str(a), 1, 0, 'C')
         pdf.cell(col_summary, 10, str(tl), 1, 1, 'C')
-    return pdf.output(dest='S').encode('latin-1')
 
+    return pdf.output(dest='S').encode('latin-1')
 # --- 6. SIDEBAR MENU ---
 with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=50)
