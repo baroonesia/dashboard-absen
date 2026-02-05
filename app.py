@@ -162,7 +162,7 @@ def generate_pdf(df_source, year, month):
 # --- 6. NAVIGASI SIDEBAR (KEMBALI KE SIDEBAR) ---
 with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=60)
-    st.markdown("###BP3MI Jawa Tengah")
+    st.markdown("BP3MI Jawa Tengah")
     
     # Menu Navigasi Sesuai Permintaan
     menu = st.radio("MAIN MENU", 
