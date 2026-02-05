@@ -1,52 +1,68 @@
 import streamlit as st
 import pandas as pd
 import os
+from datetime import datetime
+import shutil
 
-st.set_page_config(page_title="Dashboard Absensi BP3MI", layout="wide")
+# Konfigurasi Halaman
+st.set_page_config(page_title="Sistem Monitoring Absensi BP3MI", layout="wide")
 
-st.title("📊 Dashboard Monitoring Absensi (Docker Mode)")
+st.title("📊 Dashboard Absensi & Arsip Riwayat")
 
-def load_data():
-    file_path = '1.txt'
-    if os.path.exists(file_path):
-        try:
-            # Membaca data dengan separator tab sesuai struktur file 1.txt
-            df = pd.read_csv(file_path, sep='\t', header=None, 
-                             names=['ID', 'Timestamp', 'Machine', 'Code', 'Nama', 'Status', 'X1', 'X2'])
-            
-            # Konversi kolom waktu
-            df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-            df['Tanggal'] = df['Timestamp'].dt.date
-            
-            # Pengolahan M4: Ambil jam datang paling awal dan jam pulang paling akhir
-            summary = df.groupby(['Nama', 'Tanggal']).agg(
-                Jam_Datang=('Timestamp', 'min'),
-                Jam_Pulang=('Timestamp', 'max')
-            ).reset_index()
-            
-            # Format tampilan jam
-            summary['Jam_Datang'] = summary['Jam_Datang'].dt.strftime('%H:%M:%S')
-            summary['Jam_Pulang'] = summary['Jam_Pulang'].dt.strftime('%H:%M:%S')
-            
-            return summary
-        except Exception as e:
-            st.error(f"Terjadi kesalahan pembacaan data: {e}")
-            return None
-    else:
-        st.warning("Menunggu file 1.txt terdeteksi di folder /app...")
-        return None
+# Tentukan folder riwayat
+SAVE_DIR = "riwayat"
+if not os.path.exists(SAVE_DIR):
+    os.makedirs(SAVE_DIR)
 
-# Eksekusi fungsi
-data_absen = load_data()
+# --- SIDEBAR: UPLOAD ---
+st.sidebar.header("Upload Data Baru")
+uploaded_file = st.sidebar.file_uploader("Pilih file mesin absen", type=['txt', 'csv'])
 
-if data_absen is not None:
-    st.success("Data berhasil dimuat dari Docker Volume")
+def save_uploaded_file(uploaded_file):
+    # Buat nama file unik: riwayat/20260205_1530_1.txt
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_path = os.path.join(SAVE_DIR, f"{timestamp}_{uploaded_file.name}")
     
-    # Filter Nama Pegawai
-    list_nama = ["Semua"] + list(data_absen['Nama'].unique())
-    pilihan = st.selectbox("Pilih Nama Pegawai:", list_nama)
-    
-    if pilihan != "Semua":
-        data_absen = data_absen[data_absen['Nama'] == pilihan]
-    
-    st.dataframe(data_absen, use_container_width=True)
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    return file_path
+
+if uploaded_file is not None:
+    # Simpan file ke folder riwayat
+    saved_path = save_uploaded_file(uploaded_file)
+    st.sidebar.success(f"File tersimpan di: {saved_path}")
+
+    # Proses data untuk ditampilkan
+    try:
+        # Gunakan separator tab sesuai data 1.txt Anda
+        df = pd.read_csv(uploaded_file, sep='\t', header=None, 
+                         names=['ID', 'Timestamp', 'Machine', 'Code', 'Nama', 'Status', 'X1', 'X2'])
+        
+        # Logika Resume (Min/Max Jam)
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+        df['Tanggal'] = df['Timestamp'].dt.date
+        
+        resume = df.groupby(['Nama', 'Tanggal']).agg(
+            Jam_Masuk=('Timestamp', 'min'),
+            Jam_Pulang=('Timestamp', 'max')
+        ).reset_index()
+        
+        st.subheader("Hasil Olah Data Terbaru")
+        st.dataframe(resume, use_container_width=True)
+        
+    except Exception as e:
+        st.error(f"Gagal memproses data: {e}")
+
+# --- BAGIAN RIWAYAT ---
+st.markdown("---")
+st.subheader("📂 Daftar Riwayat File Terunggah")
+files = os.listdir(SAVE_DIR)
+if files:
+    selected_old_file = st.selectbox("Lihat kembali data lama:", sorted(files, reverse=True))
+    if st.button("Tampilkan Data Riwayat"):
+        path_lama = os.path.join(SAVE_DIR, selected_old_file)
+        df_lama = pd.read_csv(path_lama, sep='\t', header=None)
+        st.write(f"Menampilkan isi: {selected_old_file}")
+        st.dataframe(df_lama)
+else:
+    st.info("Belum ada riwayat file tersimpan.")
