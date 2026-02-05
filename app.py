@@ -187,7 +187,7 @@ def generate_pdf(df_source, year, month):
             
             x, y = pdf.get_x(), pdf.get_y()
             pdf.cell(col_day, 10, "", 1, 0, 'C', fill=fill)
-            pdf.set_xy(x, y+1); pdf.set_font("Arial",'',4); pdf.multi_cell(col_day, 3, txt, 0, 'C')
+            pdf.set_xy(x, y+1); pdf.set_font("Arial",'',3); pdf.multi_cell(col_day, 3, txt, 0, 'C')
             pdf.set_xy(x+col_day, y); pdf.set_font("Arial",'',6)
         
         # Kolom Summary di Kanan
@@ -326,7 +326,7 @@ elif menu == "📂 Manajemen Data":
             if not df_filt.empty:
                 df_filt['Tanggal'] = df_filt['Tanggal'].dt.date
                 pdf_bytes = generate_pdf(df_filt, t, b)
-                st.download_button("Unduh PDF", pdf_bytes, f"Laporan_{b}_{t}.pdf", "application/pdf")
+                st.download_button("Unduh PDF", pdf_bytes, f"Laporan_Absen_Outsourcing_Bulan_{b}_{t}.pdf", "application/pdf")
             else:
                 st.error("Data kosong.")
 
