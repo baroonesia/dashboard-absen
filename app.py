@@ -200,13 +200,12 @@ def generate_pdf(df_source, year, month):
 with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=50)
     st.markdown("BP3MI Jawa Tengah")
-    menu = st.radio("MENU UTAMA", ["🏠 Dashboard", "📈 Analisis Pegawai", "📂 Manajemen Data", "📜 System Logs"])
+    menu = st.radio("MENU UTAMA", ["🏠 Dashboard", "📈 Analisis Kepegawaian", "📂 Manajemen Data", "📜 System Logs"])
     st.divider()
     if st.button("🔄 Refresh Data Cloud"):
         st.cache_data.clear()
         st.rerun()
     st.caption("Connected to Google Sheets")
-    st.caption("")
     st.caption("Pranata Komputer - BP3MI Jateng © 2026")
 
 # --- 7. DASHBOARD CONTENT ---
@@ -254,7 +253,7 @@ if menu == "🏠 Dashboard":
     else:
         st.info("Database kosong.")
 
-elif menu == "📈 Analisis Kepegawaian":
+elif menu == "📈 Analisis Pegawai":
     st.markdown("<div class='header-title'>Analisis Performa Bulanan</div>", unsafe_allow_html=True)
     
     if not df_global.empty:
