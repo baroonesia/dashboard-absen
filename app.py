@@ -205,7 +205,7 @@ with st.sidebar:
     if st.button("🔄 Refresh Data Cloud"):
         st.cache_data.clear()
         st.rerun()
-    st.caption("Connected to Google Sheets")
+    st.caption("Connected to Database")
     st.caption("Pranata Komputer - BP3MI Jateng © 2026")
 
 # --- 7. DASHBOARD CONTENT ---
