@@ -115,7 +115,8 @@ def process_file(file):
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
-        self.cell(0, 10, 'LAPORAN REKAPITULASI ABSENSI ONLINE', 0, 1, 'C')
+        self.cell(0, 10, 'LAPORAN REKAPITULASI ABSENSI BP3MI JAWA TENGAH', 0, 1, 'C')
+        self.cell(0, 10, '', 0, 1, 'C')
 
 def generate_pdf(df_source, year, month):
     # --- PEMBERSIHAN DATA (Mencegah "None") ---
