@@ -118,7 +118,6 @@ class PDF(FPDF):
         self.cell(0, 10, 'LAPORAN REKAPITULASI ABSENSI OUTSOURCING', 0, 1, 'C')
         self.cell(0, 10, 'BP3MI JAWA TENGAH', 0, 1, 'C')
         self.cell(0, 10, '', 0, 1, 'C')
-        self.cell(0, 10, '', 0, 1, 'C')
 
 def generate_pdf(df_source, year, month):
     # --- PEMBERSIHAN DATA (Mencegah "None") ---
@@ -320,7 +319,7 @@ elif menu == "📂 Manajemen Data":
         c1, c2 = st.columns(2)
         b = c1.selectbox("Bulan", range(1,13), index=datetime.now().month-1)
         t = c2.number_input("Tahun", value=datetime.now().year)
-        if st.button("Download PDF"):
+        if st.button("Proses Laporan"):
             df_global['Tanggal'] = pd.to_datetime(df_global['Tanggal'])
             mask = (df_global['Tanggal'].dt.month == b) & (df_global['Tanggal'].dt.year == t)
             df_filt = df_global[mask]
