@@ -9,7 +9,7 @@ from streamlit_gsheets import GSheetsConnection
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Sistem Absensi BP3MI", layout="wide", page_icon="🏢")
 
-# --- 2. CSS CUSTOM (STYLE BARU YANG DIPAKSA) ---
+# --- 2. CSS CUSTOM (STYLE MINIMALIS) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
@@ -21,7 +21,7 @@ st.markdown("""
     :root { 
         --bg-card: #ffffff; 
         --text-main: #0F172A; 
-        --text-sub: #64748B;
+        --text-sub: #64748B; 
         --border: #E2E8F0; 
         --accent: #2563EB;
     }
@@ -29,13 +29,12 @@ st.markdown("""
         :root { 
             --bg-card: #1E293B; 
             --text-main: #F8FAFC; 
-            --text-sub: #94A3B8;
+            --text-sub: #94A3B8; 
             --border: #334155; 
             --accent: #38BDF8;
         } 
     }
     
-    /* HAPUS SEMUA STYLE LAMA, INI STYLE BARU */
     .metric-card {
         background-color: var(--bg-card); 
         color: var(--text-main);
@@ -45,42 +44,17 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     
-    /* HEADER KIRI */
-    .header-title {
-        font-size: 2rem;
-        font-weight: 800;
-        color: var(--text-main);
-        margin-bottom: 0;
-        line-height: 1.2;
-    }
-    .header-subtitle {
-        font-size: 1rem;
-        color: var(--text-sub);
-        font-weight: 400;
-    }
+    .header-title { font-size: 2rem; font-weight: 800; color: var(--text-main); line-height: 1.2; }
+    .header-subtitle { font-size: 1rem; color: var(--text-sub); font-weight: 400; }
 
-    /* HEADER KANAN (JAM MINIMALIS) */
     .clock-container-new {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end; /* Rata Kanan */
-        justify-content: center;
-        height: 100%;
+        display: flex; flex-direction: column; align-items: flex-end; justify-content: center; height: 100%;
     }
     .clock-time-new {
-        font-size: 3rem; /* Jam Besar */
-        font-weight: 300; /* Font Tipis Elegan */
-        color: var(--text-main);
-        line-height: 1;
-        font-variant-numeric: tabular-nums; /* Agar angka tidak goyang */
+        font-size: 3rem; font-weight: 300; color: var(--text-main); line-height: 1; font-variant-numeric: tabular-nums;
     }
     .clock-date-new {
-        font-size: 0.9rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: var(--accent); /* Warna Aksen Biru */
-        margin-top: 5px;
+        font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-top: 5px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -204,21 +178,18 @@ def generate_pdf(df_source, year, month):
 
 # --- 6. SIDEBAR MENU ---
 with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=50)
-    st.markdown("BP3MI Online")
+    st.image("https://img.icons8.com/fluency/96/fingerprint.png", width=50)
+    st.markdown("### BP3MI Online")
     menu = st.radio("MENU UTAMA", ["🏠 Dashboard", "📈 Analisis Pegawai", "📂 Manajemen Data", "📜 System Logs"])
     st.divider()
-    if st.button("🔄 Refresh Data Cloud"):
+    if st.button("🔄 Refresh"):
         st.cache_data.clear()
         st.rerun()
-    st.caption("Connected to Google Sheets")
-    st.caption("Pranata Komputer - BP3MI Jateng © 2026")
 
 # --- 7. DASHBOARD CONTENT ---
 df_global = get_data()
 
 if menu == "🏠 Dashboard":
-    # --- HEADER JAM & TANGGAL BARU (MINIMALIS) ---
     now_indo = datetime.utcnow() + timedelta(hours=7)
     hari_indo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
     str_hari = hari_indo[now_indo.weekday()]
@@ -236,7 +207,6 @@ if menu == "🏠 Dashboard":
         """, unsafe_allow_html=True)
     
     with col_R:
-        # Style ini menggunakan class baru 'clock-container-new'
         st.markdown(f"""
         <div class='clock-container-new'>
             <div class='clock-time-new'>{str_jam}</div>
@@ -262,25 +232,52 @@ if menu == "🏠 Dashboard":
         st.info("Database kosong.")
 
 elif menu == "📈 Analisis Pegawai":
-    st.markdown("<div class='header-title'>Analisis Data</div>", unsafe_allow_html=True)
-    st.write("---")
+    st.markdown("<div class='header-title'>Analisis Performa Bulanan</div>", unsafe_allow_html=True)
+    
     if not df_global.empty:
-        c1, c2 = st.columns(2)
-        with c1:
-            st.write("**Grafik Batang Kepatuhan**")
-            chart_data = df_global.groupby(['Nama', 'Status_Data']).size().reset_index(name='Jumlah')
-            fig = px.bar(chart_data, x='Nama', y='Jumlah', color='Status_Data', 
-                         color_discrete_map={'Lengkap':'#2563EB', 'Tidak Lengkap':'#EF553B'})
-            st.plotly_chart(fig, use_container_width=True)
-        with c2:
-            st.write("**Proporsi Keseluruhan**")
-            pie = df_global['Status_Data'].value_counts().reset_index()
-            pie.columns = ['Status','Jumlah']
-            fig2 = px.pie(pie, values='Jumlah', names='Status', hole=0.6, 
-                          color_discrete_map={'Lengkap':'#2563EB', 'Tidak Lengkap':'#EF553B'})
-            st.plotly_chart(fig2, use_container_width=True)
+        # --- FITUR BARU: SELECT BY MONTH ---
+        st.write("---")
+        col_filter1, col_filter2 = st.columns(2)
+        with col_filter1:
+            sel_bulan = st.selectbox("Pilih Bulan", range(1, 13), index=datetime.now().month-1, format_func=lambda x: calendar.month_name[x])
+        with col_filter2:
+            sel_tahun = st.number_input("Pilih Tahun", value=datetime.now().year)
+
+        # Proses Filter Data
+        df_global['Tanggal'] = pd.to_datetime(df_global['Tanggal'])
+        mask = (df_global['Tanggal'].dt.month == sel_bulan) & (df_global['Tanggal'].dt.year == sel_tahun)
+        df_filtered = df_global[mask]
+
+        if not df_filtered.empty:
+            # 1. Grafik (Mengikuti Filter Bulan)
+            st.success(f"Menampilkan Data: **{calendar.month_name[sel_bulan]} {sel_tahun}**")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                st.write("**Grafik Kepatuhan (Bulan Ini)**")
+                chart_data = df_filtered.groupby(['Nama', 'Status_Data']).size().reset_index(name='Jumlah')
+                fig = px.bar(chart_data, x='Nama', y='Jumlah', color='Status_Data', 
+                             color_discrete_map={'Lengkap':'#2563EB', 'Tidak Lengkap':'#EF553B'})
+                st.plotly_chart(fig, use_container_width=True)
+            with c2:
+                st.write("**Proporsi (Bulan Ini)**")
+                pie = df_filtered['Status_Data'].value_counts().reset_index()
+                pie.columns = ['Status','Jumlah']
+                fig2 = px.pie(pie, values='Jumlah', names='Status', hole=0.6, 
+                              color_discrete_map={'Lengkap':'#2563EB', 'Tidak Lengkap':'#EF553B'})
+                st.plotly_chart(fig2, use_container_width=True)
+            
+            # 2. Tabel Daftar Data (Sesuai Request)
+            st.markdown(f"### 📋 Daftar Detail Absensi: {calendar.month_name[sel_bulan]} {sel_tahun}")
+            # Format tanggal agar enak dilihat di tabel
+            df_display = df_filtered.copy()
+            df_display['Tanggal'] = df_display['Tanggal'].dt.date
+            st.dataframe(df_display.sort_values('Tanggal'), use_container_width=True, hide_index=True)
+            
+        else:
+            st.warning(f"Tidak ada data absensi ditemukan pada **{calendar.month_name[sel_bulan]} {sel_tahun}**.")
     else:
-        st.warning("Belum ada data.")
+        st.warning("Belum ada data sama sekali di sistem.")
 
 elif menu == "📂 Manajemen Data":
     st.markdown("<div class='header-title'>Manajemen Data</div>", unsafe_allow_html=True)
@@ -300,7 +297,7 @@ elif menu == "📂 Manajemen Data":
         c1, c2 = st.columns(2)
         b = c1.selectbox("Bulan", range(1,13), index=datetime.now().month-1)
         t = c2.number_input("Tahun", value=datetime.now().year)
-        if st.button("Generate PDF"):
+        if st.button("Download PDF"):
             df_global['Tanggal'] = pd.to_datetime(df_global['Tanggal'])
             mask = (df_global['Tanggal'].dt.month == b) & (df_global['Tanggal'].dt.year == t)
             df_filt = df_global[mask]
