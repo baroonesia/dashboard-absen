@@ -115,7 +115,9 @@ def process_file(file):
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
-        self.cell(0, 10, 'LAPORAN REKAPITULASI ABSENSI BP3MI JAWA TENGAH', 0, 1, 'C')
+        self.cell(0, 10, 'LAPORAN REKAPITULASI ABSENSI OUTSOURCING', 0, 1, 'C')
+        self.cell(0, 10, 'BP3MI JAWA TENGAH', 0, 1, 'C')
+        self.cell(0, 10, '', 0, 1, 'C')
         self.cell(0, 10, '', 0, 1, 'C')
 
 def generate_pdf(df_source, year, month):
@@ -135,7 +137,7 @@ def generate_pdf(df_source, year, month):
     
     nama_bulan = calendar.month_name[month].upper()
     pdf.set_font("Arial", 'B', 9)
-    pdf.cell(0, 5, f"PERIODE: {nama_bulan} {year}", 0, 1, 'L')
+    pdf.cell(0, 5, f"PERIODE : {nama_bulan} {year}", 0, 1, 'L')
     pdf.ln(2)
 
     # Header Tabel
@@ -148,7 +150,7 @@ def generate_pdf(df_source, year, month):
         pdf.cell(col_day, 12, str(d), 1, 0, 'C', fill=True)
     pdf.cell(col_summary, 12, 'HADIR', 1, 0, 'C')
     pdf.cell(col_summary, 12, 'ALPA', 1, 0, 'C')
-    pdf.cell(col_summary, 12, 'TDK LKP', 1, 1, 'C')
+    pdf.cell(col_summary, 12, 'TIDAK LKP', 1, 1, 'C')
 
     # Isi Data Pegawai
     pegawai = sorted(df_source['Nama'].unique())
