@@ -206,6 +206,7 @@ with st.sidebar:
         st.cache_data.clear()
         st.rerun()
     st.caption("Connected to Google Sheets")
+    st.caption("")
     st.caption("Pranata Komputer - BP3MI Jateng © 2026")
 
 # --- 7. DASHBOARD CONTENT ---
@@ -223,8 +224,8 @@ if menu == "🏠 Dashboard":
     with col_L:
         st.markdown(f"""
         <div style='padding-top:10px;'>
-            <div class='header-title'>Dashboard Absensi</div>
-            <div class='header-subtitle'>Monitoring Kehadiran Real-time</div>
+            <div class='header-title'>Dashboard Absensi BP3MI Jawa Tengah</div>
+            <div class='header-subtitle'>Monitoring Kehadiran Outsourcing</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -253,7 +254,7 @@ if menu == "🏠 Dashboard":
     else:
         st.info("Database kosong.")
 
-elif menu == "📈 Analisis Pegawai":
+elif menu == "📈 Analisis Kepegawaian":
     st.markdown("<div class='header-title'>Analisis Performa Bulanan</div>", unsafe_allow_html=True)
     
     if not df_global.empty:
