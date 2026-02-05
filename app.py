@@ -45,23 +45,30 @@ if menu == "Upload Data Baru":
     uploaded_file = st.file_uploader("Pilih file (1.txt)", type=['txt', 'csv'])
     
     if uploaded_file:
-        # Simpan file ke riwayat
+        # 1. Simpan file ke riwayat
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         file_path = os.path.join(SAVE_DIR, f"{timestamp}_{uploaded_file.name}")
         with open(file_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
         
-        st.success(f"File berhasil diupload dan diarsipkan!")
-        
-        # Tampilkan Rekap Instan
+        # 2. Baca Data
         df_raw = pd.read_csv(uploaded_file, sep='\t', header=None, 
                              names=['ID', 'Timestamp', 'Machine', 'Code', 'Nama', 'Status', 'X1', 'X2'])
         
+        # 3. KONVERSI WAJIB SEBELUM .dt DIGUNAKAN (Pencegah Error)
+        df_raw['Timestamp'] = pd.to_datetime(df_raw['Timestamp'])
+        
+        st.success(f"File berhasil diupload dan diarsipkan!")
+        
+        # 4. Tampilkan Rekap
         st.subheader("Preview Rekap (Semua Tanggal)")
-        # Kita berikan filter default hari ini untuk preview
-        res = process_data(df_raw, (df_raw['Timestamp'].dt.date.min(), df_raw['Timestamp'].dt.date.max()))
+        
+        # Sekarang .dt sudah bisa digunakan karena Timestamp sudah diconvert di atas
+        min_date = df_raw['Timestamp'].dt.date.min()
+        max_date = df_raw['Timestamp'].dt.date.max()
+        
+        res = process_data(df_raw, (min_date, max_date))
         st.dataframe(res, use_container_width=True, hide_index=True)
-
 # --- MENU 2: LIHAT DATA RIWAYAT & HAPUS ---
 elif menu == "Lihat Data Riwayat":
     st.header("📂 Manajemen Riwayat File")
