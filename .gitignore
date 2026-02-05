@@ -1,0 +1,7 @@
+# Data sensitif
+1.txt
+
+# Docker & Python
+__pycache__/
+*.pyc
+.DS_Store
