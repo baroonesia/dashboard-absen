@@ -204,13 +204,15 @@ def generate_pdf(df_source, year, month):
 
 # --- 6. SIDEBAR MENU ---
 with st.sidebar:
-    st.image("https://img.icons8.com/fluency/96/fingerprint.png", width=50)
-    st.markdown("### BP3MI Online")
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=50)
+    st.markdown("BP3MI Online")
     menu = st.radio("MENU UTAMA", ["🏠 Dashboard", "📈 Analisis Pegawai", "📂 Manajemen Data", "📜 System Logs"])
     st.divider()
-    if st.button("🔄 Refresh"):
+    if st.button("🔄 Refresh Data Cloud"):
         st.cache_data.clear()
         st.rerun()
+    st.caption("Connected to Google Sheets")
+    st.caption("Pranata Komputer - BP3MI Jateng © 2026")
 
 # --- 7. DASHBOARD CONTENT ---
 df_global = get_data()
