@@ -2,103 +2,149 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
+import calendar
+from fpdf import FPDF
 
-# Konfigurasi Halaman
-st.set_page_config(page_title="Sistem Absensi BP3MI", layout="wide")
+# --- 1. KONFIGURASI HALAMAN ---
+st.set_page_config(
+    page_title="Sistem Absensi BP3MI",
+    layout="wide",
+    page_icon="🏢"
+)
 
-# Folder Riwayat
+# --- 2. CSS DUAL MODE (TERANG/GELAP) ---
+st.markdown("""
+    <style>
+    /* Variabel Warna Adaptif */
+    :root {
+        --bg-card: #ffffff;
+        --text-main: #1E293B;
+        --text-sub: #64748B;
+        --border-color: #E2E8F0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-card: #1E293B;
+            --text-main: #F8FAFC;
+            --text-sub: #94A3B8;
+            --border-color: #334155;
+        }
+    }
+
+    .metric-card {
+        background-color: var(--bg-card);
+        color: var(--text-main);
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: 1px solid var(--border-color);
+        margin-bottom: 20px;
+    }
+
+    .main-title { color: var(--text-main); font-weight: 700; font-size: 2.2rem; }
+    .sub-title { color: var(--text-sub); margin-bottom: 2rem; }
+    
+    .info-box {
+        background: linear-gradient(90deg, #2563EB 0%, #1D4ED8 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 SAVE_DIR = "riwayat"
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
 
-# --- NAVIGASI SIDEBAR ---
-st.sidebar.title("🧭 Navigasi")
-menu = st.sidebar.selectbox("Pilih Menu", ["Upload Data Baru", "Lihat Data Riwayat"])
+# --- 3. FUNGSI LOGIKA DINAMIS ---
+def get_all_stored_data():
+    """Menggabungkan semua data dari folder riwayat untuk perhitungan dashboard"""
+    files = [os.path.join(SAVE_DIR, f) for f in os.listdir(SAVE_DIR) if f.endswith('.txt')]
+    if not files:
+        return pd.DataFrame()
+    
+    all_df = []
+    for f in files:
+        try:
+            temp_df = pd.read_csv(f, sep='\t', header=None, names=['ID','Timestamp','Mch','Cd','Nama','Status','X1','X2'])
+            all_df.append(temp_df)
+        except:
+            continue
+    return pd.concat(all_df).drop_duplicates() if all_df else pd.DataFrame()
 
-# --- FUNGSI PEMROSESAN DATA (Logika Tapping Terakhir) ---
-def process_data(df, date_range):
+def process_logic(df):
+    if df.empty: return df
     df['Nama'] = df['Nama'].str.strip()
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-    df['Tanggal_Date'] = df['Timestamp'].dt.date
+    df['Tanggal'] = df['Timestamp'].dt.date
     
-    if len(date_range) == 2:
-        start_date, end_date = date_range
-        df = df[(df['Tanggal_Date'] >= start_date) & (df['Tanggal_Date'] <= end_date)]
+    in_data = df[df['Status'] == 'I'].groupby(['Nama', 'Tanggal'])['Timestamp'].max().reset_index()
+    out_data = df[df['Status'] == 'O'].groupby(['Nama', 'Tanggal'])['Timestamp'].max().reset_index()
     
-    # Ambil tapping 'I' terakhir dan 'O' terakhir
-    df_masuk = df[df['Status'] == 'I'].groupby(['Nama', 'Tanggal_Date'])['Timestamp'].max().reset_index()
-    df_masuk = df_masuk.rename(columns={'Timestamp': 'Jam_Masuk', 'Tanggal_Date': 'Tanggal'})
-    
-    df_pulang = df[df['Status'] == 'O'].groupby(['Nama', 'Tanggal_Date'])['Timestamp'].max().reset_index()
-    df_pulang = df_pulang.rename(columns={'Timestamp': 'Jam_Pulang', 'Tanggal_Date': 'Tanggal'})
-    
-    resume = pd.merge(df_masuk, df_pulang, on=['Nama', 'Tanggal'], how='outer')
-    resume = resume.sort_values(by=['Tanggal', 'Nama'], ascending=[False, True])
-    
-    resume['Jam_Masuk'] = resume['Jam_Masuk'].dt.strftime('%H:%M:%S').fillna("-")
-    resume['Jam_Pulang'] = resume['Jam_Pulang'].dt.strftime('%H:%M:%S').fillna("-")
-    return resume
+    res = pd.merge(in_data, out_data, on=['Nama', 'Tanggal'], how='outer', suffixes=('_In', '_Out'))
+    res['Jam_Masuk'] = res['Timestamp_In'].dt.strftime('%H:%M:%S').fillna("-")
+    res['Jam_Pulang'] = res['Timestamp_Out'].dt.strftime('%H:%M:%S').fillna("-")
+    return res
 
-# --- MENU 1: UPLOAD DATA BARU ---
-if menu == "Upload Data Baru":
-    st.header("📤 Upload & Rekap Data")
-    uploaded_file = st.file_uploader("Pilih file (1.txt)", type=['txt', 'csv'])
+# --- 4. SIDEBAR ---
+with st.sidebar:
+    st.markdown("### 🏢 BP3MI Navigasi")
+    menu = st.radio("MENU", ["🏠 Dashboard", "📂 Manajemen Data"])
+    st.divider()
+    if st.button("🔄 Refresh Data"):
+        st.rerun()
+
+# --- 5. MAIN CONTENT ---
+data_global = get_all_stored_data()
+res_global = process_logic(data_global.copy()) if not data_global.empty else pd.DataFrame()
+
+if menu == "🏠 Dashboard":
+    st.markdown("<div class='main-title'>Sistem Absensi BP3MI 😊</div>", unsafe_allow_html=True)
     
-    if uploaded_file:
-        # 1. Simpan file ke riwayat
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_path = os.path.join(SAVE_DIR, f"{timestamp}_{uploaded_file.name}")
-        with open(file_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        
-        # 2. Baca Data
-        df_raw = pd.read_csv(uploaded_file, sep='\t', header=None, 
-                             names=['ID', 'Timestamp', 'Machine', 'Code', 'Nama', 'Status', 'X1', 'X2'])
-        
-        # 3. KONVERSI WAJIB SEBELUM .dt DIGUNAKAN (Pencegah Error)
-        df_raw['Timestamp'] = pd.to_datetime(df_raw['Timestamp'])
-        
-        st.success(f"File berhasil diupload dan diarsipkan!")
-        
-        # 4. Tampilkan Rekap
-        st.subheader("Preview Rekap (Semua Tanggal)")
-        
-        # Sekarang .dt sudah bisa digunakan karena Timestamp sudah diconvert di atas
-        min_date = df_raw['Timestamp'].dt.date.min()
-        max_date = df_raw['Timestamp'].dt.date.max()
-        
-        res = process_data(df_raw, (min_date, max_date))
-        st.dataframe(res, use_container_width=True, hide_index=True)
-# --- MENU 2: LIHAT DATA RIWAYAT & HAPUS ---
-elif menu == "Lihat Data Riwayat":
-    st.header("📂 Manajemen Riwayat File")
+    # Hitung Metrik Secara Dinamis
+    total_pegawai = res_global['Nama'].nunique() if not res_global.empty else 0
+    total_hadir = len(res_global[(res_global['Jam_Masuk'] != "-") & (res_global['Jam_Pulang'] != "-")])
+    total_tl = len(res_global[(res_global['Jam_Masuk'] == "-") | (res_global['Jam_Pulang'] == "-")])
+
+    st.markdown(f"""
+        <div class='info-box'>
+            <h3>Statistik Keseluruhan</h3>
+            <p>Berdasarkan {len(os.listdir(SAVE_DIR))} file arsip yang tersimpan.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        st.markdown(f"<div class='metric-card'><h4>👥 Total Pegawai</h4><h2>{total_pegawai}</h2><p>Aktif di Sistem</p></div>", unsafe_allow_html=True)
+    with m2:
+        st.markdown(f"<div class='metric-card'><h4>✅ Hadir Lengkap</h4><h2 style='color:#10B981;'>{total_hadir}</h2><p>Tapping In & Out</p></div>", unsafe_allow_html=True)
+    with m3:
+        st.markdown(f"<div class='metric-card'><h4>⚠️ Tidak Lengkap</h4><h2 style='color:#F59E0B;'>{total_tl}</h2><p>Finger 1x</p></div>", unsafe_allow_html=True)
+
+    if not res_global.empty:
+        st.write("### Data Presensi Terkini")
+        st.dataframe(res_global[['Nama', 'Tanggal', 'Jam_Masuk', 'Jam_Pulang']].head(10), use_container_width=True)
+
+else:
+    st.markdown("<div class='main-title'>Manajemen Data & Riwayat</div>", unsafe_allow_html=True)
+    tab1, tab2 = st.tabs(["📤 Unggah Data", "📜 Daftar Arsip"])
     
-    files = sorted(os.listdir(SAVE_DIR), reverse=True)
-    
-    if not files:
-        st.info("Belum ada riwayat data.")
-    else:
-        # Filter Tanggal di Menu Riwayat
-        st.subheader("Filter & Analisis")
-        date_filter = st.date_input("Pilih Rentang Tanggal", value=(datetime(2026, 2, 4), datetime(2026, 2, 5)))
-        
-        st.markdown("---")
-        
-        # Menampilkan daftar file dengan tombol Hapus
-        for file in files:
-            col1, col2, col3 = st.columns([3, 1, 1])
-            col1.write(f"📄 {file}")
-            
-            # Tombol Analisis
-            if col2.button("Analisis", key=f"an_{file}"):
-                path = os.path.join(SAVE_DIR, file)
-                df_old = pd.read_csv(path, sep='\t', header=None, 
-                                     names=['ID', 'Timestamp', 'Machine', 'Code', 'Nama', 'Status', 'X1', 'X2'])
-                res_old = process_data(df_old, date_filter)
-                st.subheader(f"Hasil Rekap: {file}")
-                st.dataframe(res_old, use_container_width=True, hide_index=True)
-            
-            # Tombol Hapus
-            if col3.button("Hapus", key=f"del_{file}", type="secondary"):
-                os.remove(os.path.join(SAVE_DIR, file))
-                st.rerun() # Refresh halaman setelah hapus
+    with tab1:
+        file = st.file_uploader("Pilih file log .txt", type=['txt'])
+        if file:
+            t_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            with open(os.path.join(SAVE_DIR, f"{t_str}_{file.name}"), "wb") as f:
+                f.write(file.getbuffer())
+            st.success("File Berhasil Diunggah! Klik 'Refresh Data' di sidebar untuk update dashboard.")
+
+    with tab2:
+        files = sorted(os.listdir(SAVE_DIR), reverse=True)
+        for f in files:
+            col1, col2 = st.columns([4, 1])
+            col1.write(f"📄 {f}")
+            if col2.button("🗑️ Hapus", key=f"del_{f}"):
+                os.remove(os.path.join(SAVE_DIR, f))
+                st.rerun() # Ini akan memicu hitung ulang otomatis

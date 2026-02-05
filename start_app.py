@@ -2,6 +2,9 @@ import os
 import subprocess
 import time
 import webbrowser
+import calendar
+from fpdf import FPDF
+
 
 def run_command(command):
     try:
