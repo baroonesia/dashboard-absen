@@ -161,8 +161,8 @@ def generate_pdf(df_source, year, month):
 
 # --- 6. NAVIGASI SIDEBAR (KEMBALI KE SIDEBAR) ---
 with st.sidebar:
-    st.image("https://img.icons8.com/fluency/96/fingerprint.png", width=60)
-    st.markdown("### 🏢 BP3MI Online")
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=60)
+    st.markdown("###BP3MI Jawa Tengah")
     
     # Menu Navigasi Sesuai Permintaan
     menu = st.radio("MAIN MENU", 
@@ -174,6 +174,7 @@ with st.sidebar:
         st.cache_data.clear()
         st.rerun()
     st.caption("Connected to Google Sheets")
+    st.caption("Pranata Komputer - BP3MI Jateng © 2026")
 
 # --- 7. LOAD DATA GLOBAL ---
 df_global = get_data()
