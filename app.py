@@ -186,8 +186,8 @@ def generate_pdf(df_source, year, month):
                     pdf.set_fill_color(240,240,240); fill = True
             
             x, y = pdf.get_x(), pdf.get_y()
-            pdf.cell(col_day, 10, "", 1.5, 0, 'C', fill=fill)
-            pdf.set_xy(x, y+1); pdf.set_font("Arial",'',4); pdf.multi_cell(col_day, 3, txt, 0, 'C')
+            pdf.cell(col_day, 10, "", 1, 0, 'C', fill=fill)
+            pdf.set_xy(x, y+1); pdf.set_font("Arial",'',3); pdf.multi_cell(col_day, 3, txt, 0, 'C')
             pdf.set_xy(x+col_day, y); pdf.set_font("Arial",'',6)
         
         # Kolom Summary di Kanan
