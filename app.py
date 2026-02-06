@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 import calendar
 from fpdf import FPDF
 import plotly.express as px
 from streamlit_gsheets import GSheetsConnection
-import time
+import time as time_lib # Rename agar tidak bentrok dengan datetime.time
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Sistem Absensi BP3MI", layout="wide", page_icon="🏢")
@@ -70,7 +70,7 @@ st.markdown("""
 # --- KONEKSI DATABASE (GLOBAL) ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- LOGIKA LOGIN DINAMIS (DARI GOOGLE SHEETS) ---
+# --- LOGIKA LOGIN DINAMIS ---
 def get_users_db():
     try:
         df = conn.read(worksheet="Users", ttl=0)
@@ -103,13 +103,12 @@ def check_login():
                             (users_df['Username'] == username_input) & 
                             (users_df['Password'] == password_input)
                         ]
-                        
                         if not user_found.empty:
                             st.session_state['logged_in'] = True
                             st.session_state['user_role'] = user_found.iloc[0]['Role']
                             st.session_state['user_name'] = user_found.iloc[0]['Nama_Lengkap']
                             st.success(f"Selamat datang, {st.session_state['user_name']}")
-                            time.sleep(1)
+                            time_lib.sleep(1)
                             st.rerun()
                         else:
                             st.error("Username atau Password salah!")
@@ -185,7 +184,7 @@ def add_log(aksi, detail):
     except Exception as e:
         st.error(f"Gagal log: {e}")
 
-# --- FUNGSI PROSES FILE (LOGIKA CERDAS SHIFT & LUPA ABSEN) ---
+# --- FUNGSI PROSES FILE (UPDATE LOGIC SHIFT 18:15) ---
 def process_file(file):
     try:
         df = pd.read_csv(file, sep='\t', header=None, names=['ID','Timestamp','Mch','Cd','Nama','Status','X1','X2'])
@@ -221,6 +220,11 @@ def process_file(file):
             jam_masuk_fix = "-"
             jam_pulang_fix = "-"
             status_data = "Tidak Lengkap"
+            
+            # Helper untuk cek waktu
+            waktu_log = log_pertama.time()
+            # Batas Shift Malam: 18:15
+            batas_malam = time(18, 15)
 
             # --- SKENARIO 1: MASUK PAGI NORMAL (< 13:00) ---
             if log_pertama.hour < 13:
@@ -229,37 +233,32 @@ def process_file(file):
                     jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
                     status_data = "Lengkap"
             
-            # --- SKENARIO 2: ABSEN SORE (ZONA AMBIGU 13:00 - 17:00) ---
-            # Bisa jadi Masuk Shift Siang, atau Lupa Absen Pagi (Pulang Normal)
-            elif 13 <= log_pertama.hour < 17:
-                # Jika cuma 1 log (Misal 16:30), kita asumsikan ini PULANG (Lupa absen pagi)
+            # --- SKENARIO 2: ABSEN SORE (ZONA AMBIGU 13:00 - 18:14) ---
+            # Jika < 18:15 tapi >= 13:00
+            elif log_pertama.hour >= 13 and waktu_log < batas_malam:
+                # Jika cuma 1 log, asumsi PULANG (Lupa Absen Pagi)
                 if log_terakhir is None:
-                    jam_masuk_fix = "-" # Tidak ada masuk
+                    jam_masuk_fix = "-"
                     jam_pulang_fix = log_pertama.strftime('%H:%M:%S')
                     status_data = "Tidak Lengkap"
                 else:
-                    # Ada lebih dari 1 log di sore hari (Misal masuk 14:00 pulang 22:00)
+                    # Ada > 1 log, Shift Siang
                     jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
                     jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
                     status_data = "Lengkap"
 
-            # --- SKENARIO 3: SHIFT MALAM (>= 17:00) ---
-            # Jika log pertama di atas jam 5 sore, kita anggap Start Shift Malam
-            else: # log_pertama.hour >= 17
+            # --- SKENARIO 3: SHIFT MALAM (>= 18:15) ---
+            else: # waktu_log >= 18:15
                 jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
                 
-                # Cek pulang di hari yang sama dulu
+                # Cek apakah pulang di hari yang sama?
                 if log_terakhir:
-                     # Jika durasi kerja masuk akal (> 3 jam), anggap selesai hari itu
                     durasi = (log_terakhir - log_pertama).total_seconds() / 3600
                     if durasi > 3:
                         jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
                         status_data = "Lengkap (Lembur)"
-                    else:
-                        # Durasinya pendek? mungkin log error, kita cari besok saja
-                        pass 
                 
-                # Jika belum ketemu pulang, cari di BESOK PAGI
+                # Jika belum ketemu pulang, cari BESOK PAGI
                 if jam_pulang_fix == "-":
                     tgl_besok = tgl + timedelta(days=1)
                     if tgl_besok in dates:
@@ -267,13 +266,12 @@ def process_file(file):
                         if not logs_besok.empty:
                             timestamps_besok = sorted(logs_besok['Timestamp'].tolist())
                             potential_out = timestamps_besok[0]
-                            # Syarat pulang besok: Sebelum jam 12 siang
+                            # Syarat: Absen besok sebelum jam 12 siang
                             if potential_out.hour < 12:
                                 jam_pulang_fix = potential_out.strftime('%H:%M:%S')
                                 status_data = "Lengkap (Shift Malam)"
-                                skip_dates.append(tgl_besok) # Tandai besok sudah terpakai
+                                skip_dates.append(tgl_besok)
 
-            # Append Hasil
             final_data.append({
                 'Nama': nama,
                 'Tanggal': tgl,
@@ -345,7 +343,6 @@ def generate_pdf(df_source, year, month):
                 p = "-" if p in ["None","nan"] else p
                 
                 if "Lengkap" in stat:
-                     # Biru Muda untuk Shift Malam, Hijau untuk Normal
                      if "Shift Malam" in stat: pdf.set_fill_color(173, 216, 230)
                      else: pdf.set_fill_color(144, 238, 144)
                      txt = f"{m}\n{p}"; h += 1
@@ -427,7 +424,6 @@ if menu == "🏠 Dashboard":
     
     if not df_global.empty:
         total_p = df_global['Nama'].nunique()
-        # Hitung Lengkap termasuk Shift Malam
         lengkap = len(df_global[df_global['Status_Data'].str.contains('Lengkap')])
         tl = len(df_global[df_global['Status_Data'] == 'Tidak Lengkap'])
         m1, m2, m3 = st.columns(3)
@@ -463,7 +459,6 @@ elif menu == "📈 Analisis Pegawai":
             gc1, gc2 = st.columns(2)
             with gc1:
                 st.write("**Grafik Kepatuhan**")
-                # Kita rapikan kategori agar Shift Malam juga dihitung sebagai 'Lengkap' untuk grafik
                 chart_data = df_filtered.copy()
                 chart_data['Status_Simple'] = chart_data['Status_Data'].apply(lambda x: 'Lengkap' if 'Lengkap' in x else 'Tidak Lengkap')
                 
@@ -494,16 +489,13 @@ elif menu == "📂 Manajemen Data":
         st.markdown(clock_html, unsafe_allow_html=True)
     st.write("---")
     
-    # TAB UNTUK USER BIASA
     tabs_list = ["Upload Data", "Download Laporan"]
-    
-    # JIKA ADMIN, TAMBAH TAB HAPUS DATA
     if USER_ROLE == "Administrator":
         tabs_list.append("⚠️ Hapus Database")
         
     mytabs = st.tabs(tabs_list)
     
-    with mytabs[0]: # Upload
+    with mytabs[0]: 
         f = st.file_uploader("Upload .txt", type=['txt'])
         if f and st.button("Simpan Data"):
             res = process_file(f)
@@ -511,7 +503,7 @@ elif menu == "📂 Manajemen Data":
                 add_log("UPLOAD", f.name)
                 st.success("Berhasil!")
     
-    with mytabs[1]: # Download
+    with mytabs[1]: 
         c1, c2 = st.columns(2)
         b = c1.selectbox("Bulan", range(1,13), index=datetime.now().month-1)
         t = c2.number_input("Tahun", value=datetime.now().year)
@@ -527,24 +519,21 @@ elif menu == "📂 Manajemen Data":
             else:
                 st.error("Data kosong.")
 
-    # TAB KHUSUS ADMIN (HAPUS DATA)
     if USER_ROLE == "Administrator":
         with mytabs[2]:
             st.error("⚠️ PERHATIAN: Tindakan ini akan menghapus SELURUH data absensi pegawai!")
             st.warning("Data User dan Log tidak akan terhapus.")
             
-            # Konfirmasi ganda agar tidak salah klik
             confirm_del = st.checkbox("Saya mengerti dan ingin menghapus seluruh data.")
             if confirm_del:
                 if st.button("HAPUS SEMUA DATA PERMANEN", type="primary"):
                     if clear_all_data():
                         add_log("DELETE_ALL", "Administrator menghapus seluruh database absensi")
                         st.success("Database berhasil dikosongkan.")
-                        time.sleep(2)
+                        time_lib.sleep(2)
                         st.rerun()
 
 elif menu == "📜 System Logs":
-    # MENU INI HANYA MUNCUL JIKA ROLE == ADMINISTRATOR
     col_L, col_R = st.columns([2, 1])
     with col_L:
         st.markdown("<div class='header-title'>System Logs</div>", unsafe_allow_html=True)
