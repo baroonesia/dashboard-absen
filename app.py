@@ -616,18 +616,43 @@ elif menu == "📈 Analisis Pegawai":
     
     if not df_global.empty:
         st.write("---")
-        c1, c2 = st.columns(2)
+        
+        # 1. SIAPKAN DATA NAMA UNTUK FILTER
+        # Ambil daftar nama unik dari database
+        all_pegawai = sorted(df_global['Nama'].unique().tolist())
+        
+        # 2. LAYOUT FILTER (3 Kolom: Bulan, Tahun, Nama)
+        c1, c2, c3 = st.columns([1, 1, 2])
+        
         with c1:
             sel_bulan = st.selectbox("Pilih Bulan", range(1, 13), index=datetime.now().month-1, format_func=lambda x: calendar.month_name[x])
         with c2:
             sel_tahun = st.number_input("Pilih Tahun", value=datetime.now().year)
+        with c3:
+            # FITUR BARU: MULTISELECT FILTER
+            sel_nama = st.multiselect("🔍 Cari & Filter Nama Pegawai (Kosongkan untuk Semua)", all_pegawai)
 
         df_global['Tanggal'] = pd.to_datetime(df_global['Tanggal'])
+        
+        # 3. TERAPKAN LOGIKA FILTER
+        # Filter Waktu (Bulan & Tahun)
         mask = (df_global['Tanggal'].dt.month == sel_bulan) & (df_global['Tanggal'].dt.year == sel_tahun)
+        
+        # Filter Nama (Jika ada yang dipilih)
+        if sel_nama:
+            mask = mask & (df_global['Nama'].isin(sel_nama))
+            
         df_filtered = df_global[mask]
 
         if not df_filtered.empty:
-            st.success(f"Data: **{calendar.month_name[sel_bulan]} {sel_tahun}**")
+            # Tampilkan info data siapa yang sedang ditampilkan
+            if sel_nama:
+                nama_display = ", ".join(sel_nama)
+                if len(sel_nama) > 2: nama_display = f"{len(sel_nama)} Pegawai Terpilih"
+                st.success(f"Data: **{calendar.month_name[sel_bulan]} {sel_tahun}** | Filter: **{nama_display}**")
+            else:
+                st.success(f"Data: **{calendar.month_name[sel_bulan]} {sel_tahun}** | Filter: **Semua Pegawai**")
+                
             gc1, gc2 = st.columns(2)
             with gc1:
                 st.write("**Grafik Kepatuhan**")
@@ -651,7 +676,7 @@ elif menu == "📈 Analisis Pegawai":
             df_display['Tanggal'] = df_display['Tanggal'].dt.date
             st.dataframe(df_display.sort_values('Tanggal'), use_container_width=True, hide_index=True)
         else:
-            st.warning("Data tidak ditemukan.")
+            st.warning("Data tidak ditemukan untuk kriteria filter tersebut.")
     else:
         st.warning("Database kosong.")
 
