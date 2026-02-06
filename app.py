@@ -10,7 +10,7 @@ import time
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Sistem Absensi BP3MI", layout="wide", page_icon="🏢")
 
-# --- 2. CSS CUSTOM (STYLE MINIMALIS & LOGIN) ---
+# --- 2. CSS CUSTOM ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
@@ -48,7 +48,6 @@ st.markdown("""
     .header-title { font-size: 2rem; font-weight: 800; color: var(--text-main); line-height: 1.2; }
     .header-subtitle { font-size: 1rem; color: var(--text-sub); font-weight: 400; }
 
-    /* CSS JAM YANG KONSISTEN */
     .clock-container-new {
         display: flex; flex-direction: column; align-items: flex-end; justify-content: center; height: 100%;
     }
@@ -61,22 +60,31 @@ st.markdown("""
     
     /* Login Box Style */
     .login-container {
-        max-width: 400px;
-        margin: 100px auto;
-        padding: 30px;
-        border-radius: 12px;
-        background-color: var(--bg-card);
-        border: 1px solid var(--border);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        text-align: center;
+        max-width: 400px; margin: 100px auto; padding: 30px; border-radius: 12px;
+        background-color: var(--bg-card); border: 1px solid var(--border);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); text-align: center;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- SISTEM LOGIN (AUTHENTICATION) ---
+# --- KONEKSI DATABASE (GLOBAL) ---
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+# --- LOGIKA LOGIN DINAMIS (DARI GOOGLE SHEETS) ---
+def get_users_db():
+    try:
+        # Membaca Sheet 'Users'
+        df = conn.read(worksheet="Users", ttl=0)
+        return df
+    except Exception:
+        st.error("Gagal membaca database User. Pastikan sheet 'Users' ada.")
+        return pd.DataFrame()
+
 def check_login():
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False
+        st.session_state['user_role'] = None
+        st.session_state['user_name'] = None
     
     if not st.session_state['logged_in']:
         col1, col2, col3 = st.columns([1, 1, 1])
@@ -90,18 +98,26 @@ def check_login():
             password_input = st.text_input("Password", type="password")
             
             if st.button("Masuk Sistem", use_container_width=True):
-                try:
-                    SEC_USER = st.secrets["auth"]["username"]
-                    SEC_PASS = st.secrets["auth"]["password"]
-                    
-                    if username_input == SEC_USER and password_input == SEC_PASS:
-                        st.session_state['logged_in'] = True
-                        st.rerun()
+                with st.spinner("Memverifikasi..."):
+                    users_df = get_users_db()
+                    if not users_df.empty:
+                        # Cek Username & Password (Case Sensitive)
+                        user_found = users_df[
+                            (users_df['Username'] == username_input) & 
+                            (users_df['Password'] == password_input)
+                        ]
+                        
+                        if not user_found.empty:
+                            st.session_state['logged_in'] = True
+                            st.session_state['user_role'] = user_found.iloc[0]['Role']
+                            st.session_state['user_name'] = user_found.iloc[0]['Nama_Lengkap']
+                            st.success(f"Selamat datang, {st.session_state['user_name']}")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error("Username atau Password salah!")
                     else:
-                        st.error("Username atau Password salah!")
-                except Exception:
-                    st.error("Konfigurasi Secrets [auth] belum disetting!")
-            
+                        st.error("Database user kosong.")
             st.markdown("</div>", unsafe_allow_html=True)
         return False 
     return True 
@@ -110,12 +126,12 @@ if not check_login():
     st.stop()
 
 # ==============================================================================
-#  AREA DI BAWAH INI HANYA BISA DIAKSES SETELAH LOGIN BERHASIL
+#  AREA AKSES SETELAH LOGIN
 # ==============================================================================
+USER_ROLE = st.session_state['user_role']
+USER_NAME = st.session_state['user_name']
 
-# --- 3. KONEKSI GOOGLE SHEETS ---
-conn = st.connection("gsheets", type=GSheetsConnection)
-
+# --- FUNGSI CRUD DATA ---
 def get_data():
     try:
         df = conn.read(worksheet="Data_Utama", ttl="0")
@@ -141,7 +157,19 @@ def save_data(new_df):
         st.error(f"Error: {e}")
         return False
 
-# --- LOGIKA LOG AUDIT ---
+def clear_all_data():
+    """HANYA ADMIN: Menghapus semua data absensi"""
+    try:
+        # Kita hanya menyisakan header
+        empty_df = pd.DataFrame(columns=['Nama', 'Tanggal', 'Jam_Masuk', 'Jam_Pulang', 'Status_Data'])
+        conn.update(worksheet="Data_Utama", data=empty_df)
+        st.cache_data.clear()
+        return True
+    except Exception as e:
+        st.error(f"Gagal menghapus: {e}")
+        return False
+
+# --- FUNGSI LOGGING ---
 def get_logs():
     try:
         df_logs = conn.read(worksheet="Log_Sistem", ttl=0)
@@ -152,7 +180,10 @@ def get_logs():
 
 def add_log(aksi, detail):
     now = (datetime.utcnow() + timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
-    new_entry = pd.DataFrame([{"Waktu": now, "Aksi": aksi, "Detail": detail}])
+    # Tambahkan info siapa yang melakukan aksi
+    detail_with_user = f"[{USER_NAME}] {detail}"
+    
+    new_entry = pd.DataFrame([{"Waktu": now, "Aksi": aksi, "Detail": detail_with_user}])
     try:
         current_logs = get_logs()
         updated_logs = pd.concat([current_logs, new_entry], ignore_index=True) if not current_logs.empty else new_entry
@@ -161,7 +192,7 @@ def add_log(aksi, detail):
     except Exception as e:
         st.error(f"Gagal log: {e}")
 
-# --- 4. LOGIKA PROSES FILE ---
+# --- FUNGSI PROSES FILE ---
 def process_file(file):
     df = pd.read_csv(file, sep='\t', header=None, names=['ID','Timestamp','Mch','Cd','Nama','Status','X1','X2'])
     df['Nama'] = df['Nama'].str.strip()
@@ -178,7 +209,7 @@ def process_file(file):
     res['Status_Data'] = res.apply(lambda row: "Lengkap" if row['Jam_Masuk'] != "-" and row['Jam_Pulang'] != "-" else "Tidak Lengkap", axis=1)
     return res[['Nama', 'Tanggal', 'Jam_Masuk', 'Jam_Pulang', 'Status_Data']]
 
-# --- 5. FUNGSI PDF ---
+# --- FUNGSI PDF ---
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -253,30 +284,36 @@ def generate_pdf(df_source, year, month):
         pdf.cell(col_summary, 10, str(tl), 1, 1, 'C')
     return pdf.output(dest='S').encode('latin-1')
 
-# --- 6. SIDEBAR MENU ---
+# --- 6. SIDEBAR MENU DINAMIS ---
 with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=50)
-    st.markdown("BP3MI Jawa Tengah")
+    st.markdown(f"**Halo, {USER_NAME}**")
+    st.caption(f"Role: {USER_ROLE}")
     
     if st.button("🔒 Logout"):
         st.session_state['logged_in'] = False
+        st.session_state['user_role'] = None
         st.rerun()
         
     st.divider()
     
-    menu = st.radio("MENU UTAMA", ["🏠 Dashboard", "📈 Analisis Pegawai", "📂 Manajemen Data", "📜 System Logs"])
+    # ATURAN MENU BERDASARKAN ROLE
+    menu_options = ["🏠 Dashboard", "📈 Analisis Pegawai", "📂 Manajemen Data"]
+    if USER_ROLE == "Administrator":
+        menu_options.append("📜 System Logs")
+        
+    menu = st.radio("MENU UTAMA", menu_options)
+    
     st.divider()
     if st.button("🔄 Refresh Data Cloud"):
         st.cache_data.clear()
-        add_log("REFRESH", "Manual refresh oleh user") 
+        add_log("REFRESH", "Manual refresh") 
         st.rerun()
-    st.caption("Connected to Database")
-    st.caption("Pranata Komputer - BP3MI Jateng © 2026")
+    st.caption("BP3MI Jateng © 2026")
 
 # --- 7. KONTEN UTAMA ---
 df_global = get_data()
 
-# --- PERHITUNGAN WAKTU GLOBAL (AGAR BISA DIPAKAI SEMUA MENU) ---
 now_indo = datetime.utcnow() + timedelta(hours=7)
 hari_indo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
 str_hari = hari_indo[now_indo.weekday()]
@@ -290,20 +327,19 @@ clock_html = f"""
 </div>
 """
 
-# --- LOGIKA TAMPILAN PER MENU ---
+# --- TAMPILAN PER MENU ---
 
 if menu == "🏠 Dashboard":
     col_L, col_R = st.columns([2, 1])
     with col_L:
         st.markdown(f"""
         <div style='padding-top:10px;'>
-            <div class='header-title'>Dashboard Absensi BP3MI Jawa Tengah</div>
+            <div class='header-title'>Dashboard Absensi</div>
             <div class='header-subtitle'>Monitoring Kehadiran Outsourcing</div>
         </div>
         """, unsafe_allow_html=True)
     with col_R:
         st.markdown(clock_html, unsafe_allow_html=True)
-        
     st.markdown("---")
     
     if not df_global.empty:
@@ -325,13 +361,13 @@ elif menu == "📈 Analisis Pegawai":
         st.markdown("<div class='header-title'>Analisis Performa</div>", unsafe_allow_html=True)
     with col_R:
         st.markdown(clock_html, unsafe_allow_html=True)
-        
+    
     if not df_global.empty:
         st.write("---")
-        col_filter1, col_filter2 = st.columns(2)
-        with col_filter1:
+        c1, c2 = st.columns(2)
+        with c1:
             sel_bulan = st.selectbox("Pilih Bulan", range(1, 13), index=datetime.now().month-1, format_func=lambda x: calendar.month_name[x])
-        with col_filter2:
+        with c2:
             sel_tahun = st.number_input("Pilih Tahun", value=datetime.now().year)
 
         df_global['Tanggal'] = pd.to_datetime(df_global['Tanggal'])
@@ -339,27 +375,28 @@ elif menu == "📈 Analisis Pegawai":
         df_filtered = df_global[mask]
 
         if not df_filtered.empty:
-            st.success(f"Menampilkan Data: **{calendar.month_name[sel_bulan]} {sel_tahun}**")
-            c1, c2 = st.columns(2)
-            with c1:
-                st.write("**Grafik Kepatuhan (Bulan Ini)**")
+            st.success(f"Data: **{calendar.month_name[sel_bulan]} {sel_tahun}**")
+            gc1, gc2 = st.columns(2)
+            with gc1:
+                st.write("**Grafik Kepatuhan**")
                 chart_data = df_filtered.groupby(['Nama', 'Status_Data']).size().reset_index(name='Jumlah')
                 fig = px.bar(chart_data, x='Nama', y='Jumlah', color='Status_Data', color_discrete_map={'Lengkap':'#2563EB', 'Tidak Lengkap':'#EF553B'})
                 st.plotly_chart(fig, use_container_width=True)
-            with c2:
-                st.write("**Proporsi (Bulan Ini)**")
+            with gc2:
+                st.write("**Proporsi**")
                 pie = df_filtered['Status_Data'].value_counts().reset_index()
                 pie.columns = ['Status','Jumlah']
                 fig2 = px.pie(pie, values='Jumlah', names='Status', hole=0.6, color_discrete_map={'Lengkap':'#2563EB', 'Tidak Lengkap':'#EF553B'})
                 st.plotly_chart(fig2, use_container_width=True)
-            st.markdown(f"### 📋 Daftar Detail Absensi: {calendar.month_name[sel_bulan]} {sel_tahun}")
+            
+            st.markdown(f"### 📋 Daftar Detail")
             df_display = df_filtered.copy()
             df_display['Tanggal'] = df_display['Tanggal'].dt.date
             st.dataframe(df_display.sort_values('Tanggal'), use_container_width=True, hide_index=True)
         else:
-            st.warning(f"Tidak ada data absensi ditemukan pada **{calendar.month_name[sel_bulan]} {sel_tahun}**.")
+            st.warning("Data tidak ditemukan.")
     else:
-        st.warning("Belum ada data sama sekali di sistem.")
+        st.warning("Database kosong.")
 
 elif menu == "📂 Manajemen Data":
     col_L, col_R = st.columns([2, 1])
@@ -367,17 +404,26 @@ elif menu == "📂 Manajemen Data":
         st.markdown("<div class='header-title'>Manajemen Data</div>", unsafe_allow_html=True)
     with col_R:
         st.markdown(clock_html, unsafe_allow_html=True)
-        
     st.write("---")
-    t1, t2 = st.tabs(["Upload Data", "Download Laporan"])
-    with t1:
+    
+    # TAB UNTUK USER BIASA
+    tabs_list = ["Upload Data", "Download Laporan"]
+    
+    # JIKA ADMIN, TAMBAH TAB HAPUS DATA
+    if USER_ROLE == "Administrator":
+        tabs_list.append("⚠️ Hapus Database")
+        
+    mytabs = st.tabs(tabs_list)
+    
+    with mytabs[0]: # Upload
         f = st.file_uploader("Upload .txt", type=['txt'])
         if f and st.button("Simpan Data"):
             res = process_file(f)
             if save_data(res):
                 add_log("UPLOAD", f.name)
                 st.success("Berhasil!")
-    with t2:
+    
+    with mytabs[1]: # Download
         c1, c2 = st.columns(2)
         b = c1.selectbox("Bulan", range(1,13), index=datetime.now().month-1)
         t = c2.number_input("Tahun", value=datetime.now().year)
@@ -389,25 +435,44 @@ elif menu == "📂 Manajemen Data":
                 df_filt['Tanggal'] = df_filt['Tanggal'].dt.date
                 pdf_bytes = generate_pdf(df_filt, t, b)
                 add_log("DOWNLOAD", f"Unduh PDF Periode {b}/{t}")
-                st.download_button("Unduh PDF", pdf_bytes, f"Laporan_Absen_Outsourcing_Bulan_{b}_{t}.pdf", "application/pdf")
+                st.download_button("Unduh PDF", pdf_bytes, f"Laporan_{b}_{t}.pdf", "application/pdf")
             else:
                 st.error("Data kosong.")
 
+    # TAB KHUSUS ADMIN (HAPUS DATA)
+    if USER_ROLE == "Administrator":
+        with mytabs[2]:
+            st.error("⚠️ PERHATIAN: Tindakan ini akan menghapus SELURUH data absensi pegawai!")
+            st.warning("Data User dan Log tidak akan terhapus.")
+            
+            # Konfirmasi ganda agar tidak salah klik
+            confirm_del = st.checkbox("Saya mengerti dan ingin menghapus seluruh data.")
+            if confirm_del:
+                if st.button("HAPUS SEMUA DATA PERMANEN", type="primary"):
+                    if clear_all_data():
+                        add_log("DELETE_ALL", "Administrator menghapus seluruh database absensi")
+                        st.success("Database berhasil dikosongkan.")
+                        time.sleep(2)
+                        st.rerun()
+
 elif menu == "📜 System Logs":
+    # MENU INI HANYA MUNCUL JIKA ROLE == ADMINISTRATOR
     col_L, col_R = st.columns([2, 1])
     with col_L:
         st.markdown("<div class='header-title'>System Logs</div>", unsafe_allow_html=True)
     with col_R:
         st.markdown(clock_html, unsafe_allow_html=True)
-        
     st.write("---")
+    
     if st.button("🔄 Refresh Log"):
         st.cache_data.clear()
         st.rerun()
+    
     with st.spinner("Memuat data log..."):
         log_df = get_logs()
+    
     if not log_df.empty:
         log_df['Waktu'] = log_df['Waktu'].astype(str)
         st.dataframe(log_df.sort_values(by="Waktu", ascending=False), use_container_width=True, hide_index=True)
     else:
-        st.info("Log kosong atau belum terhubung ke Sheet 'Log_Sistem'.")
+        st.info("Log kosong.")
