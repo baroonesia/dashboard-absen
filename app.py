@@ -181,7 +181,7 @@ def add_log(aksi, detail):
     except Exception as e:
         st.error(f"Gagal log: {e}")
 
-# --- PROSES FILE (STATUS RINCI + LOGIC 18:15) ---
+# --- PROSES FILE (NEW ALGORITHM: TIMESTAMP TRACKING) ---
 def process_file(file):
     try:
         df = pd.read_csv(file, sep='\t', header=None, names=['ID','Timestamp','Mch','Cd','Nama','Status','X1','X2'])
@@ -198,14 +198,18 @@ def process_file(file):
 
     for nama, group in df.groupby('Nama'):
         dates = sorted(group['Tanggal_Asli'].unique())
-        skip_dates = [] 
+        
+        # ALGORITMA BARU: TRACKING LOG YANG SUDAH TERPAKAI
+        # Set ini berisi Timestamp spesifik yang sudah dijadikan "Jam Pulang"
+        # Sehingga log ini tidak akan diproses lagi sebagai "Jam Masuk"
+        used_timestamps = set()
 
         for i, tgl in enumerate(dates):
-            if tgl in skip_dates:
-                continue
-            
             logs_hari_ini = group[group['Tanggal_Asli'] == tgl]
             timestamps = sorted(logs_hari_ini['Timestamp'].tolist())
+            
+            # FILTER: Buang log yang sudah terpakai (Misal dipinjam shift malam kemarin)
+            timestamps = [t for t in timestamps if t not in used_timestamps]
             
             if not timestamps:
                 continue
@@ -216,58 +220,67 @@ def process_file(file):
             
             jam_masuk_fix = "-"
             jam_pulang_fix = "-"
-            status_data = "Tidak Absen Pulang" # Default jika cuma ada log pertama
+            status_data = "Tidak Absen Pulang"
             
             # Helper Waktu
             waktu_log = log_pertama.time()
             batas_malam = time(18, 15)
 
-            # --- SKENARIO 1: MASUK PAGI NORMAL (< 13:00) ---
+            # --- SKENARIO 1: MASUK PAGI/SIANG NORMAL (< 13:00) ---
             if log_pertama.hour < 13:
                 jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
                 if log_terakhir:
                     jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
                     status_data = "Lengkap (Normal)"
+                    used_timestamps.add(log_terakhir) # Tandai pulang hari ini terpakai
                 else:
                     status_data = "Tidak Absen Pulang"
             
-            # --- SKENARIO 2: ZONA AMBIGU SIANG (13:00 - 18:14) ---
+            # --- SKENARIO 2: ZONA AMBIGU (13:00 - 18:14) ---
             elif log_pertama.hour >= 13 and waktu_log < batas_malam:
                 if log_terakhir is None:
-                    # Cuma 1 log sore = Lupa Absen Pagi
                     jam_masuk_fix = "-"
                     jam_pulang_fix = log_pertama.strftime('%H:%M:%S')
                     status_data = "Tidak Absen Pagi"
+                    used_timestamps.add(log_pertama)
                 else:
-                    # Ada > 1 log = Shift Siang Normal
                     jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
                     jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
                     status_data = "Lengkap (Normal)"
+                    used_timestamps.add(log_terakhir)
 
             # --- SKENARIO 3: SHIFT MALAM (>= 18:15) ---
             else: # waktu_log >= 18:15
                 jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
                 
-                # Cek pulang hari sama (Lembur pendek)
+                # Cek 1: Pulang di hari yang sama (Lembur pendek)
+                found_out = False
                 if log_terakhir:
                     durasi = (log_terakhir - log_pertama).total_seconds() / 3600
-                    if durasi > 3:
+                    if durasi > 3: # Hanya valid jika kerja > 3 jam
                         jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
                         status_data = "Lengkap (Normal)"
+                        used_timestamps.add(log_terakhir)
+                        found_out = True
                 
-                # Cek pulang besok pagi
-                if jam_pulang_fix == "-":
+                # Cek 2: Pulang Besok Pagi (Shift Malam Sejati)
+                if not found_out:
                     tgl_besok = tgl + timedelta(days=1)
                     if tgl_besok in dates:
                         logs_besok = group[group['Tanggal_Asli'] == tgl_besok]
                         if not logs_besok.empty:
                             timestamps_besok = sorted(logs_besok['Timestamp'].tolist())
+                            # Ambil log paling pagi di hari besok
                             potential_out = timestamps_besok[0]
-                            # Syarat: Pulang sebelum jam 12 siang besoknya
-                            if potential_out.hour < 12:
+                            
+                            # Syarat: Pulang sebelum jam 13:00 siang besoknya
+                            if potential_out.hour < 13:
                                 jam_pulang_fix = potential_out.strftime('%H:%M:%S')
                                 status_data = "Lengkap (Malam)"
-                                skip_dates.append(tgl_besok)
+                                
+                                # KUNCI UTAMA: Tandai log besok ini sebagai "Terpakai"
+                                # Agar saat loop besok jalan, log ini DI-SKIP dan tidak dianggap Masuk Pagi
+                                used_timestamps.add(potential_out)
 
             final_data.append({
                 'Nama': nama,
@@ -283,7 +296,7 @@ def process_file(file):
     else:
         return pd.DataFrame(columns=['Nama', 'Tanggal', 'Jam_Masuk', 'Jam_Pulang', 'Status_Data'])
 
-# --- FUNGSI PDF (LEGENDA + WARNA BARU) ---
+# --- FUNGSI PDF (VISUALISASI LENGKAP) ---
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -310,7 +323,7 @@ def generate_pdf(df_source, year, month):
     pdf.cell(0, 5, f"PERIODE : {nama_bulan} {year}", 0, 1, 'L')
     pdf.ln(2)
 
-    # --- TABLE HEADER ---
+    # HEADER TABEL
     pdf.set_font("Arial", 'B', 6)
     pdf.cell(col_no, 12, 'No', 1, 0, 'C')
     pdf.cell(col_nama, 12, 'Nama Pegawai', 1, 0, 'C')
@@ -322,7 +335,7 @@ def generate_pdf(df_source, year, month):
     pdf.cell(col_summary, 12, 'ALPA', 1, 0, 'C')
     pdf.cell(col_summary, 12, 'TIDAK LKP', 1, 1, 'C')
 
-    # --- TABLE BODY ---
+    # BODY TABEL
     pegawai = sorted(df_source['Nama'].unique())
     for idx, nama in enumerate(pegawai, 1):
         h, a, tl = 0, 0, 0
@@ -342,25 +355,23 @@ def generate_pdf(df_source, year, month):
                 m = "-" if m in ["None","nan"] else m
                 p = "-" if p in ["None","nan"] else p
                 
-                # --- LOGIKA WARNA (DIUPGRADE) ---
+                # --- LOGIKA WARNA ---
                 if "Lengkap" in stat:
                      if "Malam" in stat: 
-                         pdf.set_fill_color(173, 216, 230) # Biru Muda (Shift Malam)
+                         pdf.set_fill_color(173, 216, 230) # Biru Muda (Malam)
                      else: 
                          pdf.set_fill_color(144, 238, 144) # Hijau Muda (Normal)
                      txt = f"{m}\n{p}"; h += 1
                 else:
-                    # Kuning (Tidak Lengkap / Absen Kurang)
-                    pdf.set_fill_color(255, 255, 153) 
-                    txt = f"{m if m!='-' else p}"; tl += 1
+                    pdf.set_fill_color(255, 255, 153); txt = f"{m if m!='-' else p}"; tl += 1 # Kuning
                 
                 fill = True
             else:
-                # Cek Hari Kerja vs Libur
-                if calendar.weekday(year, month, d) < 5:
-                    pdf.set_fill_color(255, 153, 153); txt = "X"; a += 1; fill = True # Merah (Alpa)
-                else:
-                    pdf.set_fill_color(240,240,240); fill = True # Abu (Libur)
+                # TIDAK ADA DATA
+                if calendar.weekday(year, month, d) < 5: # Senin-Jumat
+                    pdf.set_fill_color(255, 153, 153); txt = "X"; a += 1; fill = True # Merah
+                else: # Sabtu-Minggu
+                    pdf.set_fill_color(240,240,240); fill = True # Abu
             
             x, y = pdf.get_x(), pdf.get_y()
             pdf.cell(col_day, 10, "", 1, 0, 'C', fill=fill)
@@ -371,26 +382,24 @@ def generate_pdf(df_source, year, month):
         pdf.cell(col_summary, 10, str(a), 1, 0, 'C')
         pdf.cell(col_summary, 10, str(tl), 1, 1, 'C')
 
-    # --- LEGENDA (KETERANGAN WARNA) DI BAWAH TABEL ---
-    pdf.ln(8) # Spasi ke bawah
+    # LEGENDA
+    pdf.ln(8)
     pdf.set_font("Arial", 'B', 7)
-    pdf.cell(0, 5, "KETERANGAN WARNA :", 0, 1, 'L')
+    pdf.cell(0, 5, "KETERANGAN WARNA (LEGENDA):", 0, 1, 'L')
     
-    # Fungsi Helper untuk gambar kotak warna
     def draw_legend(r, g, b, text):
         pdf.set_fill_color(r, g, b)
-        pdf.cell(4, 4, "", 1, 0, 'C', fill=True) # Kotak warna
-        pdf.cell(2) # Spasi kecil
-        pdf.cell(30, 4, text, 0, 0, 'L') # Teks
-        pdf.cell(5) # Spasi antar item
+        pdf.cell(4, 4, "", 1, 0, 'C', fill=True)
+        pdf.cell(2)
+        pdf.cell(30, 4, text, 0, 0, 'L')
+        pdf.cell(5)
 
-    # Baris Legenda
     pdf.set_font("Arial", '', 7)
-    draw_legend(144, 238, 144, "Lengkap (Shift Pagi)")
+    draw_legend(144, 238, 144, "Lengkap (Normal)")
     draw_legend(173, 216, 230, "Lengkap (Shift Malam)")
-    draw_legend(255, 255, 153, "Absen Tidak Lengkap")
+    draw_legend(255, 255, 153, "Data Tidak Lengkap")
     draw_legend(255, 153, 153, "Tidak Hadir (Alpa)")
-    draw_legend(240, 240, 240, "Hari Libur")
+    draw_legend(240, 240, 240, "Hari Libur / Kosong")
     
     return pdf.output(dest='S').encode('latin-1')
 
@@ -486,12 +495,10 @@ elif menu == "📈 Analisis Pegawai":
             gc1, gc2 = st.columns(2)
             with gc1:
                 st.write("**Grafik Kepatuhan**")
-                # Sederhanakan status untuk grafik
                 chart_data = df_filtered.copy()
                 chart_data['Kategori'] = chart_data['Status_Data'].apply(
                     lambda x: 'Lengkap' if 'Lengkap' in x else ('Tidak Absen Pagi' if 'Pagi' in x else 'Tidak Absen Pulang')
                 )
-                
                 chart_data_grp = chart_data.groupby(['Nama', 'Kategori']).size().reset_index(name='Jumlah')
                 fig = px.bar(chart_data_grp, x='Nama', y='Jumlah', color='Kategori', 
                              color_discrete_map={'Lengkap':'#2563EB', 'Tidak Absen Pagi':'#EF553B', 'Tidak Absen Pulang':'#F59E0B'})
