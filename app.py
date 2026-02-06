@@ -7,6 +7,13 @@ import plotly.express as px
 from streamlit_gsheets import GSheetsConnection
 import time as time_lib 
 
+# --- IMPORT VERSI OTOMATIS ---
+try:
+    from version_info import VERSION_TAG, LAST_UPDATED
+except ImportError:
+    VERSION_TAG = "v1.0 (Dev)"
+    LAST_UPDATED = "Belum Disinkronisasi"
+
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Sistem Absensi BP3MI", layout="wide", page_icon="🏢")
 
@@ -63,6 +70,11 @@ st.markdown("""
         background-color: var(--bg-card); border: 1px solid var(--border);
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); text-align: center;
     }
+    
+    .version-tag {
+        font-size: 0.75rem; color: var(--text-sub); margin-top: 20px; text-align: center;
+        border-top: 1px solid var(--border); padding-top: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -113,6 +125,12 @@ def check_login():
                             st.error("Username atau Password salah!")
                     else:
                         st.error("Database user kosong.")
+            st.markdown(f"""
+            <div class='version-tag'>
+                System Version: <b>{VERSION_TAG}</b><br>
+                Updated: {LAST_UPDATED}
+            </div>
+            """, unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
         return False 
     return True 
@@ -405,6 +423,14 @@ with st.sidebar:
     st.markdown(f"**Halo, {USER_NAME}**")
     st.caption(f"Role: {USER_ROLE}")
     
+    # --- TAMPILAN VERSI APLIKASI DI SIDEBAR ---
+    st.markdown(f"""
+    <div class='version-tag'>
+        System Version: <b>{VERSION_TAG}</b><br>
+        Updated: {LAST_UPDATED}
+    </div>
+    """, unsafe_allow_html=True)
+
     if st.button("🔒 Logout"):
         st.session_state['logged_in'] = False
         st.session_state['user_role'] = None
@@ -532,24 +558,19 @@ elif menu == "📂 Manajemen Data":
     with mytabs[0]: 
         f = st.file_uploader("Upload .txt", type=['txt'])
         if f and st.button("Simpan Data"):
-            # Progress Bar Container
             progress_text = "Memulai proses..."
             my_bar = st.progress(0, text=progress_text)
             
-            # Stage 1: Reading (30%)
             time_lib.sleep(0.5)
             my_bar.progress(30, text="📂 Membaca & Membersihkan Data...")
             res = process_file(f)
             
-            # Stage 2: Analyzing (60%)
             time_lib.sleep(0.5)
             my_bar.progress(60, text="🧠 Analisis Cerdas (Anti-Overlap Shift)...")
             
-            # Stage 3: Saving (90%)
             my_bar.progress(90, text="☁️ Sinkronisasi ke Database...")
             saved = save_data(res)
             
-            # Stage 4: Finish (100%)
             if saved:
                 my_bar.progress(100, text="✅ Selesai!")
                 time_lib.sleep(0.5)
