@@ -496,7 +496,7 @@ if menu == "ℹ️ Tentang Aplikasi":
 
     # SECTION 1: INTRODUCTION (Bargaining Power Intro)
     st.markdown("""
-    ###Enterprise-Grade Attendance Management System
+    Attendance Management System
     Sistem ini dirancang bukan sekadar sebagai alat pencatat, melainkan sebagai **Solusi Terintegrasi** untuk mengatasi kompleksitas manajemen jadwal kerja modern.
     Menggunakan arsitektur *Cloud-Hybrid*, sistem ini menjamin integritas data, efisiensi waktu rekapitulasi, dan akurasi pelaporan hingga 99.9%.
     """)
