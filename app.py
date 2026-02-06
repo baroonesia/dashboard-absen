@@ -126,10 +126,6 @@ def check_login():
                     else:
                         st.error("Database user kosong.")
             st.markdown(f"""
-            <div class='version-tag'>
-                System Version: <b>{VERSION_TAG}</b><br>
-                Updated: {LAST_UPDATED}
-            </div>
             """, unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
         return False 
@@ -447,6 +443,10 @@ with st.sidebar:
         st.cache_data.clear()
         add_log("REFRESH", "Manual refresh") 
         st.rerun()
+    <div class='version-tag'>
+                System Version: <b>{VERSION_TAG}</b><br>
+                Updated: {LAST_UPDATED}
+            </div>
     st.caption("BP3MI Jateng © 2026")
 
 # --- KONTEN UTAMA ---
