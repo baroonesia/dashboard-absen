@@ -374,7 +374,7 @@ def generate_pdf(df_source, year, month):
     # --- LEGENDA (KETERANGAN WARNA) DI BAWAH TABEL ---
     pdf.ln(8) # Spasi ke bawah
     pdf.set_font("Arial", 'B', 7)
-    pdf.cell(0, 5, "KETERANGAN WARNA (LEGENDA):", 0, 1, 'L')
+    pdf.cell(0, 5, "KETERANGAN WARNA :", 0, 1, 'L')
     
     # Fungsi Helper untuk gambar kotak warna
     def draw_legend(r, g, b, text):
@@ -386,9 +386,9 @@ def generate_pdf(df_source, year, month):
 
     # Baris Legenda
     pdf.set_font("Arial", '', 7)
-    draw_legend(144, 238, 144, "Lengkap (Normal)")
+    draw_legend(144, 238, 144, "Lengkap (Shift Pagi)")
     draw_legend(173, 216, 230, "Lengkap (Shift Malam)")
-    draw_legend(255, 255, 153, "Data Tidak Lengkap")
+    draw_legend(255, 255, 153, "Absen Tidak Lengkap")
     draw_legend(255, 153, 153, "Tidak Hadir (Alpa)")
     draw_legend(240, 240, 240, "Hari Libur")
     
