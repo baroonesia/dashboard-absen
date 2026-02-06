@@ -32,6 +32,7 @@ st.markdown("""
         --text-sub: #64748B; 
         --border: #E2E8F0; 
         --accent: #2563EB;
+        --success: #10B981;
     }
     @media (prefers-color-scheme: dark) { 
         :root { 
@@ -80,6 +81,18 @@ st.markdown("""
         text-align: center;
         opacity: 0.8;
     }
+
+    /* Style Tambahan untuk Halaman Tentang Aplikasi */
+    .feature-box {
+        background-color: var(--bg-card);
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 5px solid var(--accent);
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .feature-title { font-weight: 800; font-size: 1.1rem; color: var(--text-main); margin-bottom: 5px; }
+    .feature-desc { font-size: 0.9rem; color: var(--text-sub); }
     </style>
     """, unsafe_allow_html=True)
 
@@ -411,9 +424,9 @@ def generate_pdf(df_source, year, month):
         pdf.cell(5)
 
     pdf.set_font("Arial", '', 7)
-    draw_legend(144, 238, 144, "Lengkap (Shift Pagi)")
+    draw_legend(144, 238, 144, "Lengkap (Normal)")
     draw_legend(173, 216, 230, "Lengkap (Shift Malam)")
-    draw_legend(255, 255, 153, "Absen Tidak Lengkap")
+    draw_legend(255, 255, 153, "Data Tidak Lengkap")
     draw_legend(255, 153, 153, "Tidak Hadir (Alpa)")
     draw_legend(240, 240, 240, "Hari Libur / Kosong")
     
@@ -431,7 +444,8 @@ with st.sidebar:
         st.rerun()
     st.divider()
     
-    menu_options = ["🏠 Dashboard", "📈 Analisis Pegawai", "📂 Manajemen Data"]
+    # --- MENAMBAHKAN MENU TENTANG APLIKASI ---
+    menu_options = ["🏠 Dashboard", "📈 Analisis Pegawai", "📂 Manajemen Data", "ℹ️ Tentang Aplikasi"]
     if USER_ROLE == "Administrator":
         menu_options.append("📜 System Logs")
         
@@ -447,8 +461,7 @@ with st.sidebar:
         Updated: {LAST_UPDATED}
     </div>
     """, unsafe_allow_html=True)
-    st.caption("")
-    st.caption("Pranata Komputer - BP3MI Jateng © 2026")
+    st.caption("BP3MI Jateng © 2026")
 
 # --- KONTEN UTAMA ---
 df_global = get_data()
@@ -467,7 +480,106 @@ clock_html = f"""
 """
 
 # --- TAMPILAN MENU ---
-if menu == "🏠 Dashboard":
+
+if menu == "ℹ️ Tentang Aplikasi":
+    col_L, col_R = st.columns([2, 1])
+    with col_L:
+        st.markdown(f"""
+        <div style='padding-top:10px;'>
+            <div class='header-title'>Tentang Aplikasi</div>
+            <div class='header-subtitle'>SIM Presensi Outsourcing BP3MI Jawa Tengah</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col_R:
+        st.markdown(clock_html, unsafe_allow_html=True)
+    st.markdown("---")
+
+    # SECTION 1: INTRODUCTION (Bargaining Power Intro)
+    st.markdown("""
+    ### 🚀 Enterprise-Grade Attendance Management System
+    Sistem ini dirancang bukan sekadar sebagai alat pencatat, melainkan sebagai **Solusi Terintegrasi** untuk mengatasi kompleksitas manajemen jadwal kerja modern.
+    Menggunakan arsitektur *Cloud-Hybrid*, sistem ini menjamin integritas data, efisiensi waktu rekapitulasi, dan akurasi pelaporan hingga 99.9%.
+    """)
+    st.write("")
+
+    # SECTION 2: KEUNGGULAN UTAMA (3 Kolom)
+    c1, c2, c3 = st.columns(3)
+    
+    with c1:
+        st.markdown("""
+        <div class='feature-box'>
+            <div class='feature-title'>🧠 Anti-Overlap Shift Logic</div>
+            <div class='feature-desc'>
+                Algoritma cerdas yang mampu membedakan <b>Shift Beruntun (Marathon)</b>, Lembur Lintas Hari, dan kepulangan pagi. 
+                Sistem otomatis memisahkan jam pulang shift kemarin dengan jam masuk shift hari ini tanpa intervensi manual.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with c2:
+        st.markdown("""
+        <div class='feature-box'>
+            <div class='feature-title'>☁️ Cloud Synchronization</div>
+            <div class='feature-desc'>
+                Data tersimpan aman di <b>Google Cloud Database</b>. Memungkinkan akses *real-time* dari berbagai perangkat, 
+                mencegah data hilang akibat kerusakan hardware lokal, dan memudahkan kolaborasi tim.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c3:
+        st.markdown("""
+        <div class='feature-box'>
+            <div class='feature-title'>📑 Automated Audit Report</div>
+            <div class='feature-desc'>
+                Generator laporan PDF otomatis yang <b>Siap Audit</b>. Dilengkapi dengan <i>Conditional Formatting</i> (pewarnaan otomatis) 
+                untuk memvisualisasikan kepatuhan, shift malam, dan ketidakhadiran dalam satu pandangan mata.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.write("---")
+
+    # SECTION 3: ISTILAH TEKNIS (TERMINOLOGI)
+    st.subheader("📚 Terminologi & Logika Sistem")
+    st.info("Pemahaman istilah ini penting untuk memastikan validitas data.")
+    
+    col_term1, col_term2 = st.columns(2)
+    
+    with col_term1:
+        st.markdown("""
+        **1. Status: Lengkap (Normal)**
+        * Pegawai melakukan absensi masuk (Pagi/Siang) dan pulang (Sore/Malam) pada **Hari yang sama**.
+        * Batas toleransi masuk adalah sebelum pukul 13:00 WIB.
+        
+        **2. Status: Lengkap (Shift Malam)**
+        * Pegawai masuk di atas pukul **18:15 WIB** dan pulang pada **Hari Berikutnya** (sebelum pukul 13:00).
+        * Sistem otomatis menandai kepulangan di hari esok agar tidak dianggap sebagai "Terlambat Masuk".
+        """)
+        
+    with col_term2:
+        st.markdown("""
+        **3. Zona Waktu Ambigu (13:00 - 18:14)**
+        * Jika pegawai hanya melakukan satu kali absen di jam ini, sistem mendeteksinya sebagai **"Lupa Absen Pagi"** (hanya absen pulang).
+        * Jika ada dua log, dianggap Shift Siang Normal.
+        
+        **4. Smart Timestamp Tracking**
+        * Sistem menandai (flagging) setiap data waktu yang sudah digunakan untuk "Pulang".
+        * Mencegah data ganda pada kasus lembur di hari libur atau shift ganda.
+        """)
+
+    # SECTION 4: SPESIFIKASI TEKNIS (Untuk Tim IT / Maintenance)
+    with st.expander("🛠️ Spesifikasi Teknis (Developer Mode)"):
+        st.markdown(f"""
+        * **Framework:** Python Streamlit (Frontend & Backend)
+        * **Visualization:** Plotly Interactive Charts
+        * **Reporting Engine:** FPDF Library (Coordinate-based layout)
+        * **Data Processing:** Pandas (Vectorized operations for speed)
+        * **Current Version:** {VERSION_TAG}
+        * **Last Build:** {LAST_UPDATED}
+        """)
+
+elif menu == "🏠 Dashboard":
     col_L, col_R = st.columns([2, 1])
     with col_L:
         st.markdown(f"""
