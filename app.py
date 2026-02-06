@@ -19,7 +19,7 @@ except ImportError:
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Sistem Absensi BP3MI", layout="wide", page_icon="🏢")
 
-# --- 2. CSS CUSTOM ---
+# --- 2. CSS CUSTOM (ELEGANT THEME) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
@@ -33,7 +33,7 @@ st.markdown("""
         --text-main: #0F172A; 
         --text-sub: #64748B; 
         --border: #E2E8F0; 
-        --accent: #2563EB;
+        --accent: #2563EB; /* Biru Royal */
         --success: #10B981;
     }
     @media (prefers-color-scheme: dark) { 
@@ -42,7 +42,7 @@ st.markdown("""
             --text-main: #F8FAFC; 
             --text-sub: #94A3B8; 
             --border: #334155; 
-            --accent: #38BDF8;
+            --accent: #38BDF8; /* Biru Langit */
         } 
     }
     
@@ -74,7 +74,6 @@ st.markdown("""
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); text-align: center;
     }
     
-    /* Style untuk Tag Versi di Bawah */
     .version-tag {
         font-size: 0.70rem; 
         color: var(--text-sub); 
@@ -84,7 +83,6 @@ st.markdown("""
         opacity: 0.8;
     }
 
-    /* Style Tambahan untuk Halaman Tentang Aplikasi */
     .feature-box {
         background-color: var(--bg-card);
         padding: 20px;
@@ -146,13 +144,12 @@ def check_login():
                     else:
                         st.error("Database user kosong.")
             
-            # Info Versi di Layar Login juga
+            # Info Versi di Layar Login
             st.markdown(f"""
             <div style='text-align:center; margin-top:20px; font-size:0.8rem; color:#888;'>
                 Ver: {VERSION_TAG}
             </div>
             """, unsafe_allow_html=True)
-            
             st.markdown("</div>", unsafe_allow_html=True)
         return False 
     return True 
@@ -164,7 +161,7 @@ if not check_login():
 USER_ROLE = st.session_state['user_role']
 USER_NAME = st.session_state['user_name']
 
-# --- CRUD DATA ---
+# --- CRUD DATA (Logika Tetap) ---
 def get_data():
     try:
         df = conn.read(worksheet="Data_Utama", ttl="0")
@@ -238,21 +235,16 @@ def process_file(file):
 
     for nama, group in df.groupby('Nama'):
         dates = sorted(group['Tanggal_Asli'].unique())
-        
-        # ALGORITMA BARU: TRACKING LOG YANG SUDAH TERPAKAI
         used_timestamps = set()
 
         for i, tgl in enumerate(dates):
             logs_hari_ini = group[group['Tanggal_Asli'] == tgl]
             timestamps = sorted(logs_hari_ini['Timestamp'].tolist())
-            
-            # FILTER: Buang log yang sudah terpakai
             timestamps = [t for t in timestamps if t not in used_timestamps]
             
             if not timestamps:
                 continue
 
-            # Inisialisasi
             log_pertama = timestamps[0]
             log_terakhir = timestamps[-1] if len(timestamps) > 1 else None
             
@@ -260,11 +252,10 @@ def process_file(file):
             jam_pulang_fix = "-"
             status_data = "Tidak Absen Pulang"
             
-            # Helper Waktu
             waktu_log = log_pertama.time()
             batas_malam = time(18, 15)
 
-            # --- SKENARIO 1: MASUK PAGI/SIANG NORMAL (< 13:00) ---
+            # SKENARIO 1: NORMAL
             if log_pertama.hour < 13:
                 jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
                 if log_terakhir:
@@ -274,7 +265,7 @@ def process_file(file):
                 else:
                     status_data = "Tidak Absen Pulang"
             
-            # --- SKENARIO 2: ZONA AMBIGU (13:00 - 18:14) ---
+            # SKENARIO 2: ZONA AMBIGU
             elif log_pertama.hour >= 13 and waktu_log < batas_malam:
                 if log_terakhir is None:
                     jam_masuk_fix = "-"
@@ -287,11 +278,9 @@ def process_file(file):
                     status_data = "Lengkap (Normal)"
                     used_timestamps.add(log_terakhir)
 
-            # --- SKENARIO 3: SHIFT MALAM (>= 18:15) ---
+            # SKENARIO 3: SHIFT MALAM
             else: # waktu_log >= 18:15
                 jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
-                
-                # Cek 1: Pulang di hari yang sama (Lembur pendek)
                 found_out = False
                 if log_terakhir:
                     durasi = (log_terakhir - log_pertama).total_seconds() / 3600
@@ -301,7 +290,6 @@ def process_file(file):
                         used_timestamps.add(log_terakhir)
                         found_out = True
                 
-                # Cek 2: Pulang Besok Pagi (Shift Malam Sejati)
                 if not found_out:
                     tgl_besok = tgl + timedelta(days=1)
                     if tgl_besok in dates:
@@ -309,7 +297,6 @@ def process_file(file):
                         if not logs_besok.empty:
                             timestamps_besok = sorted(logs_besok['Timestamp'].tolist())
                             potential_out = timestamps_besok[0]
-                            
                             if potential_out.hour < 13:
                                 jam_pulang_fix = potential_out.strftime('%H:%M:%S')
                                 status_data = "Lengkap (Malam)"
@@ -329,7 +316,7 @@ def process_file(file):
     else:
         return pd.DataFrame(columns=['Nama', 'Tanggal', 'Jam_Masuk', 'Jam_Pulang', 'Status_Data'])
 
-# --- FUNGSI PDF (VISUALISASI LENGKAP) ---
+# --- FUNGSI PDF ---
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -356,7 +343,6 @@ def generate_pdf(df_source, year, month):
     pdf.cell(0, 5, f"PERIODE : {nama_bulan} {year}", 0, 1, 'L')
     pdf.ln(2)
 
-    # HEADER TABEL
     pdf.set_font("Arial", 'B', 6)
     pdf.cell(col_no, 12, 'No', 1, 0, 'C')
     pdf.cell(col_nama, 12, 'Nama Pegawai', 1, 0, 'C')
@@ -368,7 +354,6 @@ def generate_pdf(df_source, year, month):
     pdf.cell(col_summary, 12, 'ALPA', 1, 0, 'C')
     pdf.cell(col_summary, 12, 'TIDAK LKP', 1, 1, 'C')
 
-    # BODY TABEL
     pegawai = sorted(df_source['Nama'].unique())
     for idx, nama in enumerate(pegawai, 1):
         h, a, tl = 0, 0, 0
@@ -389,14 +374,11 @@ def generate_pdf(df_source, year, month):
                 p = "-" if p in ["None","nan"] else p
                 
                 if "Lengkap" in stat:
-                     if "Malam" in stat: 
-                         pdf.set_fill_color(173, 216, 230) 
-                     else: 
-                         pdf.set_fill_color(144, 238, 144) 
+                     if "Malam" in stat: pdf.set_fill_color(173, 216, 230) 
+                     else: pdf.set_fill_color(144, 238, 144) 
                      txt = f"{m}\n{p}"; h += 1
                 else:
                     pdf.set_fill_color(255, 255, 153); txt = f"{m if m!='-' else p}"; tl += 1
-                
                 fill = True
             else:
                 if calendar.weekday(year, month, d) < 5: 
@@ -413,28 +395,9 @@ def generate_pdf(df_source, year, month):
         pdf.cell(col_summary, 10, str(a), 1, 0, 'C')
         pdf.cell(col_summary, 10, str(tl), 1, 1, 'C')
 
-    # LEGENDA
-    pdf.ln(8)
-    pdf.set_font("Arial", 'B', 7)
-    pdf.cell(0, 5, "KETERANGAN WARNA (LEGENDA):", 0, 1, 'L')
-    
-    def draw_legend(r, g, b, text):
-        pdf.set_fill_color(r, g, b)
-        pdf.cell(4, 4, "", 1, 0, 'C', fill=True)
-        pdf.cell(2)
-        pdf.cell(30, 4, text, 0, 0, 'L')
-        pdf.cell(5)
-
-    pdf.set_font("Arial", '', 7)
-    draw_legend(144, 238, 144, "Lengkap (Normal)")
-    draw_legend(173, 216, 230, "Lengkap (Shift Malam)")
-    draw_legend(255, 255, 153, "Data Tidak Lengkap")
-    draw_legend(255, 153, 153, "Tidak Hadir (Alpa)")
-    draw_legend(240, 240, 240, "Hari Libur / Kosong")
-    
     return pdf.output(dest='S').encode('latin-1')
 
-# --- SIDEBAR MENU MODERN ---
+# --- SIDEBAR MENU MODERN & ELEGAN ---
 with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=60)
     st.markdown(f"**Halo, {USER_NAME}**")
@@ -455,7 +418,7 @@ with st.sidebar:
         menu_list.append("System Logs")
         icon_list.append("journal-text")
 
-    # OPTION MENU COMPONENT
+    # OPTION MENU DENGAN WARNA HOVER YANG DIPERBAIKI (VISIBLE DARK/LIGHT)
     menu = option_menu(
         menu_title=None, 
         options=menu_list,
@@ -464,9 +427,16 @@ with st.sidebar:
         default_index=0,
         styles={
             "container": {"padding": "0!important", "background-color": "transparent"},
-            "icon": {"color": "var(--accent)", "font-size": "18px"}, 
-            "nav-link": {"font-size": "15px", "text-align": "left", "margin":"5px", "--hover-color": "#eee"},
-            "nav-link-selected": {"background-color": "var(--accent)", "font-weight": "600"},
+            "icon": {"color": "#2563EB", "font-size": "18px"}, # Warna Icon Biru Brand
+            "nav-link": {
+                "font-size": "15px",
+                "text-align": "left",
+                "margin": "5px",
+                # FIX VISIBILITY: Gunakan RGBA transparan agar cocok di dark/light mode
+                # Tidak menggunakan warna solid #eee yang tabrakan dengan teks putih di dark mode
+                "--hover-color": "rgba(37, 99, 235, 0.1)", 
+            },
+            "nav-link-selected": {"background-color": "#2563EB", "font-weight": "600"},
         }
     )
 
@@ -484,7 +454,9 @@ with st.sidebar:
 df_global = get_data()
 now_indo = datetime.utcnow() + timedelta(hours=7)
 str_hari = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"][now_indo.weekday()]
-clock_html = f"<div class='clock-container-new'><div class='clock-time-new'>{now_indo.strftime('%H:%M')}</div><div class='clock-date-new'>{str_hari}, {now_indo.strftime('%d %B %Y')}</div></div>"
+str_tgl = now_indo.strftime('%d %B %Y')
+str_jam = now_indo.strftime('%H:%M')
+clock_html = f"<div class='clock-container-new'><div class='clock-time-new'>{str_jam}</div><div class='clock-date-new'>{str_hari}, {str_tgl}</div></div>"
 
 # --- LOGIKA KONTEN BERDASARKAN MENU MODERN ---
 
@@ -501,7 +473,6 @@ if menu == "Tentang Aplikasi":
         st.markdown(clock_html, unsafe_allow_html=True)
     st.markdown("---")
 
-    # SECTION 1: INTRODUCTION (Bargaining Power Intro)
     st.markdown("""
     ### 🚀 Enterprise-Grade Attendance Management System
     Sistem ini dirancang bukan sekadar sebagai alat pencatat, melainkan sebagai **Solusi Terintegrasi** untuk mengatasi kompleksitas manajemen jadwal kerja modern.
@@ -509,83 +480,26 @@ if menu == "Tentang Aplikasi":
     """)
     st.write("")
 
-    # SECTION 2: KEUNGGULAN UTAMA (3 Kolom)
     c1, c2, c3 = st.columns(3)
-    
     with c1:
-        st.markdown("""
-        <div class='feature-box'>
-            <div class='feature-title'>🧠 Anti-Overlap Shift Logic</div>
-            <div class='feature-desc'>
-                Algoritma cerdas yang mampu membedakan <b>Shift Beruntun (Marathon)</b>, Lembur Lintas Hari, dan kepulangan pagi. 
-                Sistem otomatis memisahkan jam pulang shift kemarin dengan jam masuk shift hari ini tanpa intervensi manual.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
+        st.markdown("""<div class='feature-box'><div class='feature-title'>🧠 Anti-Overlap Shift Logic</div><div class='feature-desc'>Algoritma cerdas yang mampu membedakan <b>Shift Beruntun</b>, Lembur Lintas Hari, dan kepulangan pagi.</div></div>""", unsafe_allow_html=True)
     with c2:
-        st.markdown("""
-        <div class='feature-box'>
-            <div class='feature-title'>☁️ Cloud Synchronization</div>
-            <div class='feature-desc'>
-                Data tersimpan aman di <b>Google Cloud Database</b>. Memungkinkan akses *real-time* dari berbagai perangkat, 
-                mencegah data hilang akibat kerusakan hardware lokal, dan memudahkan kolaborasi tim.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
+        st.markdown("""<div class='feature-box'><div class='feature-title'>☁️ Cloud Synchronization</div><div class='feature-desc'>Data tersimpan aman di <b>Google Cloud Database</b>. Akses *real-time* dari berbagai perangkat.</div></div>""", unsafe_allow_html=True)
     with c3:
-        st.markdown("""
-        <div class='feature-box'>
-            <div class='feature-title'>📑 Automated Audit Report</div>
-            <div class='feature-desc'>
-                Generator laporan PDF otomatis yang <b>Siap Audit</b>. Dilengkapi dengan <i>Conditional Formatting</i> (pewarnaan otomatis) 
-                untuk memvisualisasikan kepatuhan, shift malam, dan ketidakhadiran dalam satu pandangan mata.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("""<div class='feature-box'><div class='feature-title'>📑 Automated Audit Report</div><div class='feature-desc'>Generator laporan PDF otomatis dengan pewarnaan kondisional yang <b>Siap Audit</b>.</div></div>""", unsafe_allow_html=True)
 
     st.write("---")
-
-    # SECTION 3: ISTILAH TEKNIS (TERMINOLOGI)
     st.subheader("📚 Terminologi & Logika Sistem")
-    st.info("Pemahaman istilah ini penting untuk memastikan validitas data.")
-    
     col_term1, col_term2 = st.columns(2)
-    
     with col_term1:
-        st.markdown("""
-        **1. Status: Lengkap (Normal)**
-        * Pegawai melakukan absensi masuk (Pagi/Siang) dan pulang (Sore/Malam) pada **Hari yang sama**.
-        * Batas toleransi masuk adalah sebelum pukul 13:00 WIB.
-        
-        **2. Status: Lengkap (Shift Malam)**
-        * Pegawai masuk di atas pukul **18:15 WIB** dan pulang pada **Hari Berikutnya** (sebelum pukul 13:00).
-        * Sistem otomatis menandai kepulangan di hari esok agar tidak dianggap sebagai "Terlambat Masuk".
-        """)
-        
+        st.markdown("""**1. Status: Lengkap (Normal)**\nPegawai masuk dan pulang pada hari yang sama.""")
+        st.markdown("""**2. Status: Lengkap (Shift Malam)**\nPegawai masuk malam (>18:15) dan pulang besok pagi (<13:00).""")
     with col_term2:
-        st.markdown("""
-        **3. Zona Waktu Ambigu (13:00 - 18:14)**
-        * Jika pegawai hanya melakukan satu kali absen di jam ini, sistem mendeteksinya sebagai **"Lupa Absen Pagi"** (hanya absen pulang).
-        * Jika ada dua log, dianggap Shift Siang Normal.
-        
-        **4. Smart Timestamp Tracking**
-        * Sistem menandai (flagging) setiap data waktu yang sudah digunakan untuk "Pulang".
-        * Mencegah data ganda pada kasus lembur di hari libur atau shift ganda.
-        """)
-
-    # SECTION 4: SPESIFIKASI TEKNIS (Untuk Tim IT / Maintenance)
-    with st.expander("🛠️ Spesifikasi Teknis (Developer Mode)"):
-        st.markdown(f"""
-        * **Framework:** Python Streamlit (Frontend & Backend)
-        * **Visualization:** Plotly Interactive Charts
-        * **Reporting Engine:** FPDF Library (Coordinate-based layout)
-        * **Data Processing:** Pandas (Vectorized operations for speed)
-        * **Current Version:** {VERSION_TAG}
-        * **Last Build:** {LAST_UPDATED}
-        * **Created by :** Prima Ammaray
-        """)
+        st.markdown("""**3. Zona Ambigu (13:00-18:14)**\nSatu log di jam ini dianggap lupa absen pagi.""")
+        st.markdown("""**4. Smart Timestamp**\nMencegah data ganda pada lembur/shift ganda.""")
+    
+    with st.expander("🛠️ Spesifikasi Teknis"):
+        st.markdown(f"* Framework: Python Streamlit\n* Version: {VERSION_TAG}\n* Build: {LAST_UPDATED}")
 
 elif menu == "Dashboard":
     col_L, col_R = st.columns([2, 1])
