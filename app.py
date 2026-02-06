@@ -318,6 +318,12 @@ if menu == "🏠 Dashboard":
         st.info("Database kosong.")
 
 elif menu == "📈 Analisis Pegawai":
+    now_indo = datetime.utcnow() + timedelta(hours=7)
+    hari_indo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+    str_hari = hari_indo[now_indo.weekday()]
+    str_tgl = now_indo.strftime('%d %B %Y')
+    str_jam = now_indo.strftime('%H:%M') 
+    
     st.markdown("<div class='header-title'>Analisis Performa Bulanan</div>", unsafe_allow_html=True)
     if not df_global.empty:
         st.write("---")
