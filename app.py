@@ -496,7 +496,7 @@ if menu == "ℹ️ Tentang Aplikasi":
 
     # SECTION 1: INTRODUCTION (Bargaining Power Intro)
     st.markdown("""
-    ### 🚀 Enterprise-Grade Attendance Management System
+    ###Enterprise-Grade Attendance Management System
     Sistem ini dirancang bukan sekadar sebagai alat pencatat, melainkan sebagai **Solusi Terintegrasi** untuk mengatasi kompleksitas manajemen jadwal kerja modern.
     Menggunakan arsitektur *Cloud-Hybrid*, sistem ini menjamin integritas data, efisiensi waktu rekapitulasi, dan akurasi pelaporan hingga 99.9%.
     """)
@@ -508,7 +508,7 @@ if menu == "ℹ️ Tentang Aplikasi":
     with c1:
         st.markdown("""
         <div class='feature-box'>
-            <div class='feature-title'>🧠 Anti-Overlap Shift Logic</div>
+            <div class='feature-title'>Anti-Overlap Shift Logic</div>
             <div class='feature-desc'>
                 Algoritma cerdas yang mampu membedakan <b>Shift Beruntun (Marathon)</b>, Lembur Lintas Hari, dan kepulangan pagi. 
                 Sistem otomatis memisahkan jam pulang shift kemarin dengan jam masuk shift hari ini tanpa intervensi manual.
@@ -519,7 +519,7 @@ if menu == "ℹ️ Tentang Aplikasi":
     with c2:
         st.markdown("""
         <div class='feature-box'>
-            <div class='feature-title'>☁️ Cloud Synchronization</div>
+            <div class='feature-title'>Cloud Synchronization</div>
             <div class='feature-desc'>
                 Data tersimpan aman di <b>Google Cloud Database</b>. Memungkinkan akses *real-time* dari berbagai perangkat, 
                 mencegah data hilang akibat kerusakan hardware lokal, dan memudahkan kolaborasi tim.
@@ -530,7 +530,7 @@ if menu == "ℹ️ Tentang Aplikasi":
     with c3:
         st.markdown("""
         <div class='feature-box'>
-            <div class='feature-title'>📑 Automated Audit Report</div>
+            <div class='feature-title'>Automated Audit Report</div>
             <div class='feature-desc'>
                 Generator laporan PDF otomatis yang <b>Siap Audit</b>. Dilengkapi dengan <i>Conditional Formatting</i> (pewarnaan otomatis) 
                 untuk memvisualisasikan kepatuhan, shift malam, dan ketidakhadiran dalam satu pandangan mata.
@@ -541,7 +541,7 @@ if menu == "ℹ️ Tentang Aplikasi":
     st.write("---")
 
     # SECTION 3: ISTILAH TEKNIS (TERMINOLOGI)
-    st.subheader("📚 Terminologi & Logika Sistem")
+    st.subheader("Terminologi & Logika Sistem")
     st.info("Pemahaman istilah ini penting untuk memastikan validitas data.")
     
     col_term1, col_term2 = st.columns(2)
@@ -569,7 +569,7 @@ if menu == "ℹ️ Tentang Aplikasi":
         """)
 
     # SECTION 4: SPESIFIKASI TEKNIS (Untuk Tim IT / Maintenance)
-    with st.expander("🛠️ Spesifikasi Teknis (Developer Mode)"):
+    with st.expander("Spesifikasi Teknis (Developer Mode)"):
         st.markdown(f"""
         * **Framework:** Python Streamlit (Frontend & Backend)
         * **Visualization:** Plotly Interactive Charts
