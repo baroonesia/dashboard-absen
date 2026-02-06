@@ -435,7 +435,7 @@ elif menu == "📂 Manajemen Data":
                 df_filt['Tanggal'] = df_filt['Tanggal'].dt.date
                 pdf_bytes = generate_pdf(df_filt, t, b)
                 add_log("DOWNLOAD", f"Unduh PDF Periode {b}/{t}")
-                st.download_button("Unduh PDF", pdf_bytes, f"Laporan_{b}_{t}.pdf", "application/pdf")
+                st.download_button("Unduh PDF", pdf_bytes, f"Laporan Absensi Bulan {b} Tahun {t}.pdf", "application/pdf")
             else:
                 st.error("Data kosong.")
 
