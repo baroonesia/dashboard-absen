@@ -87,12 +87,37 @@ def save_data(new_df):
         st.error(f"Error: {e}")
         return False
 
-if 'system_logs' not in st.session_state:
-    st.session_state['system_logs'] = []
+# --- LOGIKA LOG AUDIT PERMANEN ---
+def get_logs():
+    try:
+        # Membaca sheet Log_Sistem untuk keperluan audit
+        df_logs = conn.read(worksheet="Log_Sistem", ttl="0")
+        return df_logs
+    except:
+        return pd.DataFrame(columns=['Waktu', 'Aksi', 'Detail'])
 
 def add_log(aksi, detail):
+    # Mencatat waktu WIB
     now = (datetime.utcnow() + timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
-    st.session_state['system_logs'].insert(0, {"Waktu": now, "Aksi": aksi, "Detail": detail})
+    
+    # Menyiapkan data log baru
+    new_entry = pd.DataFrame([{"Waktu": now, "Aksi": aksi, "Detail": detail}])
+    
+    try:
+        # Ambil log lama dari cloud
+        current_logs = get_logs()
+        
+        # Gabungkan log lama + baru
+        if current_logs.empty:
+            updated_logs = new_entry
+        else:
+            updated_logs = pd.concat([current_logs, new_entry], ignore_index=True)
+            
+        # Simpan permanen ke Sheet Log_Sistem
+        conn.update(worksheet="Log_Sistem", data=updated_logs)
+    except Exception as e:
+        # Fallback jika gagal koneksi (tetap jalan tapi warning)
+        print(f"Gagal mencatat log audit: {e}")
 
 # --- 4. LOGIKA PROSES FILE ---
 def process_file(file):
@@ -196,6 +221,7 @@ def generate_pdf(df_source, year, month):
         pdf.cell(col_summary, 10, str(tl), 1, 1, 'C')
 
     return pdf.output(dest='S').encode('latin-1')
+
 # --- 6. SIDEBAR MENU ---
 with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=50)
@@ -204,6 +230,7 @@ with st.sidebar:
     st.divider()
     if st.button("🔄 Refresh Data Cloud"):
         st.cache_data.clear()
+        add_log("REFRESH", "Manual refresh oleh user") # Menambahkan Log saat refresh
         st.rerun()
     st.caption("Connected to Database")
     st.caption("Pranata Komputer - BP3MI Jateng © 2026")
@@ -312,7 +339,7 @@ elif menu == "📂 Manajemen Data":
         if f and st.button("Simpan Data"):
             res = process_file(f)
             if save_data(res):
-                add_log("UPLOAD", f.name)
+                add_log("UPLOAD", f.name) # Log upload berhasil
                 st.success("Berhasil!")
     
     with t2:
@@ -326,6 +353,8 @@ elif menu == "📂 Manajemen Data":
             if not df_filt.empty:
                 df_filt['Tanggal'] = df_filt['Tanggal'].dt.date
                 pdf_bytes = generate_pdf(df_filt, t, b)
+                # Tambah Log Audit Download
+                add_log("DOWNLOAD", f"Unduh PDF Periode {b}/{t}")
                 st.download_button("Unduh PDF", pdf_bytes, f"Laporan_Absen_Outsourcing_Bulan_{b}_{t}.pdf", "application/pdf")
             else:
                 st.error("Data kosong.")
@@ -333,7 +362,12 @@ elif menu == "📂 Manajemen Data":
 elif menu == "📜 System Logs":
     st.markdown("<div class='header-title'>System Logs</div>", unsafe_allow_html=True)
     st.write("---")
-    if st.session_state['system_logs']:
-        st.table(pd.DataFrame(st.session_state['system_logs']))
+    
+    # Ambil Log dari Cloud, bukan session_state
+    log_df = get_logs()
+    
+    if not log_df.empty:
+        # Tampilkan yang terbaru di atas
+        st.dataframe(log_df.sort_values(by="Waktu", ascending=False), use_container_width=True, hide_index=True)
     else:
         st.info("Log kosong.")
