@@ -73,11 +73,9 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 # --- LOGIKA LOGIN DINAMIS (DARI GOOGLE SHEETS) ---
 def get_users_db():
     try:
-        # Membaca Sheet 'Users'
         df = conn.read(worksheet="Users", ttl=0)
         return df
     except Exception:
-        st.error("Gagal membaca database User. Pastikan sheet 'Users' ada.")
         return pd.DataFrame()
 
 def check_login():
@@ -101,7 +99,6 @@ def check_login():
                 with st.spinner("Memverifikasi..."):
                     users_df = get_users_db()
                     if not users_df.empty:
-                        # Cek Username & Password (Case Sensitive)
                         user_found = users_df[
                             (users_df['Username'] == username_input) & 
                             (users_df['Password'] == password_input)
@@ -158,9 +155,7 @@ def save_data(new_df):
         return False
 
 def clear_all_data():
-    """HANYA ADMIN: Menghapus semua data absensi"""
     try:
-        # Kita hanya menyisakan header
         empty_df = pd.DataFrame(columns=['Nama', 'Tanggal', 'Jam_Masuk', 'Jam_Pulang', 'Status_Data'])
         conn.update(worksheet="Data_Utama", data=empty_df)
         st.cache_data.clear()
@@ -180,9 +175,7 @@ def get_logs():
 
 def add_log(aksi, detail):
     now = (datetime.utcnow() + timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
-    # Tambahkan info siapa yang melakukan aksi
     detail_with_user = f"[{USER_NAME}] {detail}"
-    
     new_entry = pd.DataFrame([{"Waktu": now, "Aksi": aksi, "Detail": detail_with_user}])
     try:
         current_logs = get_logs()
@@ -192,22 +185,108 @@ def add_log(aksi, detail):
     except Exception as e:
         st.error(f"Gagal log: {e}")
 
-# --- FUNGSI PROSES FILE ---
+# --- FUNGSI PROSES FILE (LOGIKA CERDAS SHIFT & LUPA ABSEN) ---
 def process_file(file):
-    df = pd.read_csv(file, sep='\t', header=None, names=['ID','Timestamp','Mch','Cd','Nama','Status','X1','X2'])
+    try:
+        df = pd.read_csv(file, sep='\t', header=None, names=['ID','Timestamp','Mch','Cd','Nama','Status','X1','X2'])
+    except:
+        file.seek(0)
+        df = pd.read_csv(file, header=None, names=['ID','Timestamp','Mch','Cd','Nama','Status','X1','X2'])
+
     df['Nama'] = df['Nama'].str.strip()
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-    df['Tanggal'] = df['Timestamp'].dt.date
-    
-    in_data = df[df['Status'] == 'I'].groupby(['Nama', 'Tanggal'])['Timestamp'].max().reset_index()
-    out_data = df[df['Status'] == 'O'].groupby(['Nama', 'Tanggal'])['Timestamp'].max().reset_index()
-    
-    res = pd.merge(in_data, out_data, on=['Nama', 'Tanggal'], how='outer', suffixes=('_In', '_Out'))
-    res['Jam_Masuk'] = res['Timestamp_In'].dt.strftime('%H:%M:%S').fillna("-")
-    res['Jam_Pulang'] = res['Timestamp_Out'].dt.strftime('%H:%M:%S').fillna("-")
-    
-    res['Status_Data'] = res.apply(lambda row: "Lengkap" if row['Jam_Masuk'] != "-" and row['Jam_Pulang'] != "-" else "Tidak Lengkap", axis=1)
-    return res[['Nama', 'Tanggal', 'Jam_Masuk', 'Jam_Pulang', 'Status_Data']]
+    df['Tanggal_Asli'] = df['Timestamp'].dt.date
+    df = df.sort_values(['Nama', 'Timestamp'])
+
+    final_data = []
+
+    for nama, group in df.groupby('Nama'):
+        dates = sorted(group['Tanggal_Asli'].unique())
+        skip_dates = [] 
+
+        for i, tgl in enumerate(dates):
+            if tgl in skip_dates:
+                continue
+            
+            logs_hari_ini = group[group['Tanggal_Asli'] == tgl]
+            timestamps = sorted(logs_hari_ini['Timestamp'].tolist())
+            
+            if not timestamps:
+                continue
+
+            # LOGIKA UTAMA
+            log_pertama = timestamps[0]
+            log_terakhir = timestamps[-1] if len(timestamps) > 1 else None
+            
+            jam_masuk_fix = "-"
+            jam_pulang_fix = "-"
+            status_data = "Tidak Lengkap"
+
+            # --- SKENARIO 1: MASUK PAGI NORMAL (< 13:00) ---
+            if log_pertama.hour < 13:
+                jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
+                if log_terakhir:
+                    jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
+                    status_data = "Lengkap"
+            
+            # --- SKENARIO 2: ABSEN SORE (ZONA AMBIGU 13:00 - 17:00) ---
+            # Bisa jadi Masuk Shift Siang, atau Lupa Absen Pagi (Pulang Normal)
+            elif 13 <= log_pertama.hour < 17:
+                # Jika cuma 1 log (Misal 16:30), kita asumsikan ini PULANG (Lupa absen pagi)
+                if log_terakhir is None:
+                    jam_masuk_fix = "-" # Tidak ada masuk
+                    jam_pulang_fix = log_pertama.strftime('%H:%M:%S')
+                    status_data = "Tidak Lengkap"
+                else:
+                    # Ada lebih dari 1 log di sore hari (Misal masuk 14:00 pulang 22:00)
+                    jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
+                    jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
+                    status_data = "Lengkap"
+
+            # --- SKENARIO 3: SHIFT MALAM (>= 17:00) ---
+            # Jika log pertama di atas jam 5 sore, kita anggap Start Shift Malam
+            else: # log_pertama.hour >= 17
+                jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
+                
+                # Cek pulang di hari yang sama dulu
+                if log_terakhir:
+                     # Jika durasi kerja masuk akal (> 3 jam), anggap selesai hari itu
+                    durasi = (log_terakhir - log_pertama).total_seconds() / 3600
+                    if durasi > 3:
+                        jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
+                        status_data = "Lengkap (Lembur)"
+                    else:
+                        # Durasinya pendek? mungkin log error, kita cari besok saja
+                        pass 
+                
+                # Jika belum ketemu pulang, cari di BESOK PAGI
+                if jam_pulang_fix == "-":
+                    tgl_besok = tgl + timedelta(days=1)
+                    if tgl_besok in dates:
+                        logs_besok = group[group['Tanggal_Asli'] == tgl_besok]
+                        if not logs_besok.empty:
+                            timestamps_besok = sorted(logs_besok['Timestamp'].tolist())
+                            potential_out = timestamps_besok[0]
+                            # Syarat pulang besok: Sebelum jam 12 siang
+                            if potential_out.hour < 12:
+                                jam_pulang_fix = potential_out.strftime('%H:%M:%S')
+                                status_data = "Lengkap (Shift Malam)"
+                                skip_dates.append(tgl_besok) # Tandai besok sudah terpakai
+
+            # Append Hasil
+            final_data.append({
+                'Nama': nama,
+                'Tanggal': tgl,
+                'Jam_Masuk': jam_masuk_fix,
+                'Jam_Pulang': jam_pulang_fix,
+                'Status_Data': status_data
+            })
+
+    res = pd.DataFrame(final_data)
+    if not res.empty:
+        return res[['Nama', 'Tanggal', 'Jam_Masuk', 'Jam_Pulang', 'Status_Data']]
+    else:
+        return pd.DataFrame(columns=['Nama', 'Tanggal', 'Jam_Masuk', 'Jam_Pulang', 'Status_Data'])
 
 # --- FUNGSI PDF ---
 class PDF(FPDF):
@@ -264,8 +343,12 @@ def generate_pdf(df_source, year, month):
                 stat = row.iloc[0]['Status_Data']
                 m = "-" if m in ["None","nan"] else m
                 p = "-" if p in ["None","nan"] else p
-                if stat == "Lengkap" and m != "-" and p != "-":
-                    pdf.set_fill_color(144, 238, 144); txt = f"{m}\n{p}"; h += 1
+                
+                if "Lengkap" in stat:
+                     # Biru Muda untuk Shift Malam, Hijau untuk Normal
+                     if "Shift Malam" in stat: pdf.set_fill_color(173, 216, 230)
+                     else: pdf.set_fill_color(144, 238, 144)
+                     txt = f"{m}\n{p}"; h += 1
                 else:
                     pdf.set_fill_color(255, 255, 102); txt = f"{m if m!='-' else p}"; tl += 1
                 fill = True
@@ -344,7 +427,8 @@ if menu == "🏠 Dashboard":
     
     if not df_global.empty:
         total_p = df_global['Nama'].nunique()
-        lengkap = len(df_global[df_global['Status_Data'] == 'Lengkap'])
+        # Hitung Lengkap termasuk Shift Malam
+        lengkap = len(df_global[df_global['Status_Data'].str.contains('Lengkap')])
         tl = len(df_global[df_global['Status_Data'] == 'Tidak Lengkap'])
         m1, m2, m3 = st.columns(3)
         m1.markdown(f"<div class='metric-card'><h4>👥 Pegawai</h4><h1>{total_p}</h1></div>", unsafe_allow_html=True)
@@ -379,14 +463,18 @@ elif menu == "📈 Analisis Pegawai":
             gc1, gc2 = st.columns(2)
             with gc1:
                 st.write("**Grafik Kepatuhan**")
-                chart_data = df_filtered.groupby(['Nama', 'Status_Data']).size().reset_index(name='Jumlah')
-                fig = px.bar(chart_data, x='Nama', y='Jumlah', color='Status_Data', color_discrete_map={'Lengkap':'#2563EB', 'Tidak Lengkap':'#EF553B'})
+                # Kita rapikan kategori agar Shift Malam juga dihitung sebagai 'Lengkap' untuk grafik
+                chart_data = df_filtered.copy()
+                chart_data['Status_Simple'] = chart_data['Status_Data'].apply(lambda x: 'Lengkap' if 'Lengkap' in x else 'Tidak Lengkap')
+                
+                chart_data_grp = chart_data.groupby(['Nama', 'Status_Simple']).size().reset_index(name='Jumlah')
+                fig = px.bar(chart_data_grp, x='Nama', y='Jumlah', color='Status_Simple', color_discrete_map={'Lengkap':'#2563EB', 'Tidak Lengkap':'#EF553B'})
                 st.plotly_chart(fig, use_container_width=True)
             with gc2:
                 st.write("**Proporsi**")
                 pie = df_filtered['Status_Data'].value_counts().reset_index()
                 pie.columns = ['Status','Jumlah']
-                fig2 = px.pie(pie, values='Jumlah', names='Status', hole=0.6, color_discrete_map={'Lengkap':'#2563EB', 'Tidak Lengkap':'#EF553B'})
+                fig2 = px.pie(pie, values='Jumlah', names='Status', hole=0.6)
                 st.plotly_chart(fig2, use_container_width=True)
             
             st.markdown(f"### 📋 Daftar Detail")
