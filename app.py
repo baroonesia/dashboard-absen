@@ -447,7 +447,7 @@ with st.sidebar:
         Updated: {LAST_UPDATED}
     </div>
     """, unsafe_allow_html=True)
-    st.caption("B)
+    st.caption("")
     st.caption("Pranata Komputer - BP3MI Jateng © 2026")
 
 # --- KONTEN UTAMA ---
