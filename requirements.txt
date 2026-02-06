@@ -3,3 +3,4 @@ pandas
 fpdf
 plotly
 st-gsheets-connection
+pip install streamlit-option-menu
