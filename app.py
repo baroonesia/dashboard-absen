@@ -411,9 +411,9 @@ def generate_pdf(df_source, year, month):
         pdf.cell(5)
 
     pdf.set_font("Arial", '', 7)
-    draw_legend(144, 238, 144, "Lengkap (Normal)")
+    draw_legend(144, 238, 144, "Lengkap (Shift Pagi)")
     draw_legend(173, 216, 230, "Lengkap (Shift Malam)")
-    draw_legend(255, 255, 153, "Data Tidak Lengkap")
+    draw_legend(255, 255, 153, "Absen Tidak Lengkap")
     draw_legend(255, 153, 153, "Tidak Hadir (Alpa)")
     draw_legend(240, 240, 240, "Hari Libur / Kosong")
     
@@ -441,17 +441,14 @@ with st.sidebar:
         st.cache_data.clear()
         add_log("REFRESH", "Manual refresh") 
         st.rerun()
-
-    # --- TAMPILAN VERSI APLIKASI DI SIDEBAR ---
-    # DIPINDAH KE BAWAH (DI ATAS COPYRIGHT)
     st.markdown(f"""
     <div class='version-tag'>
         System Version: <b>{VERSION_TAG}</b><br>
         Updated: {LAST_UPDATED}
     </div>
     """, unsafe_allow_html=True)
-    
-    st.caption("BP3MI Jateng © 2026")
+    st.caption("B)
+    st.caption("Pranata Komputer - BP3MI Jateng © 2026")
 
 # --- KONTEN UTAMA ---
 df_global = get_data()
