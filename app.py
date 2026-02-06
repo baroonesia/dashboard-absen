@@ -71,9 +71,14 @@ st.markdown("""
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); text-align: center;
     }
     
+    /* Style untuk Tag Versi di Bawah */
     .version-tag {
-        font-size: 0.75rem; color: var(--text-sub); margin-top: 20px; text-align: center;
-        border-top: 1px solid var(--border); padding-top: 10px;
+        font-size: 0.70rem; 
+        color: var(--text-sub); 
+        margin-top: 15px; 
+        margin-bottom: 5px;
+        text-align: center;
+        opacity: 0.8;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -125,8 +130,14 @@ def check_login():
                             st.error("Username atau Password salah!")
                     else:
                         st.error("Database user kosong.")
+            
+            # Info Versi di Layar Login juga
             st.markdown(f"""
+            <div style='text-align:center; margin-top:20px; font-size:0.8rem; color:#888;'>
+                Ver: {VERSION_TAG}
+            </div>
             """, unsafe_allow_html=True)
+            
             st.markdown("</div>", unsafe_allow_html=True)
         return False 
     return True 
@@ -244,7 +255,7 @@ def process_file(file):
                 if log_terakhir:
                     jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
                     status_data = "Lengkap (Normal)"
-                    used_timestamps.add(log_terakhir) # Tandai pulang hari ini terpakai
+                    used_timestamps.add(log_terakhir) 
                 else:
                     status_data = "Tidak Absen Pulang"
             
@@ -269,7 +280,7 @@ def process_file(file):
                 found_out = False
                 if log_terakhir:
                     durasi = (log_terakhir - log_pertama).total_seconds() / 3600
-                    if durasi > 3: # Hanya valid jika kerja > 3 jam
+                    if durasi > 3: 
                         jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
                         status_data = "Lengkap (Normal)"
                         used_timestamps.add(log_terakhir)
@@ -284,12 +295,9 @@ def process_file(file):
                             timestamps_besok = sorted(logs_besok['Timestamp'].tolist())
                             potential_out = timestamps_besok[0]
                             
-                            # Syarat: Pulang sebelum jam 13:00 siang besoknya
                             if potential_out.hour < 13:
                                 jam_pulang_fix = potential_out.strftime('%H:%M:%S')
                                 status_data = "Lengkap (Malam)"
-                                
-                                # KUNCI: Tandai log besok ini sebagai "Terpakai"
                                 used_timestamps.add(potential_out)
 
             final_data.append({
@@ -365,23 +373,21 @@ def generate_pdf(df_source, year, month):
                 m = "-" if m in ["None","nan"] else m
                 p = "-" if p in ["None","nan"] else p
                 
-                # --- LOGIKA WARNA ---
                 if "Lengkap" in stat:
                      if "Malam" in stat: 
-                         pdf.set_fill_color(173, 216, 230) # Biru Muda (Malam)
+                         pdf.set_fill_color(173, 216, 230) 
                      else: 
-                         pdf.set_fill_color(144, 238, 144) # Hijau Muda (Normal)
+                         pdf.set_fill_color(144, 238, 144) 
                      txt = f"{m}\n{p}"; h += 1
                 else:
-                    pdf.set_fill_color(255, 255, 153); txt = f"{m if m!='-' else p}"; tl += 1 # Kuning
+                    pdf.set_fill_color(255, 255, 153); txt = f"{m if m!='-' else p}"; tl += 1
                 
                 fill = True
             else:
-                # TIDAK ADA DATA
-                if calendar.weekday(year, month, d) < 5: # Senin-Jumat
-                    pdf.set_fill_color(255, 153, 153); txt = "X"; a += 1; fill = True # Merah
-                else: # Sabtu-Minggu
-                    pdf.set_fill_color(240,240,240); fill = True # Abu
+                if calendar.weekday(year, month, d) < 5: 
+                    pdf.set_fill_color(255, 153, 153); txt = "X"; a += 1; fill = True
+                else: 
+                    pdf.set_fill_color(240,240,240); fill = True
             
             x, y = pdf.get_x(), pdf.get_y()
             pdf.cell(col_day, 10, "", 1, 0, 'C', fill=fill)
@@ -419,14 +425,6 @@ with st.sidebar:
     st.markdown(f"**Halo, {USER_NAME}**")
     st.caption(f"Role: {USER_ROLE}")
     
-    # --- TAMPILAN VERSI APLIKASI DI SIDEBAR ---
-    st.markdown(f"""
-    <div class='version-tag'>
-        System Version: <b>{VERSION_TAG}</b><br>
-        Updated: {LAST_UPDATED}
-    </div>
-    """, unsafe_allow_html=True)
-
     if st.button("🔒 Logout"):
         st.session_state['logged_in'] = False
         st.session_state['user_role'] = None
@@ -443,10 +441,16 @@ with st.sidebar:
         st.cache_data.clear()
         add_log("REFRESH", "Manual refresh") 
         st.rerun()
+
+    # --- TAMPILAN VERSI APLIKASI DI SIDEBAR ---
+    # DIPINDAH KE BAWAH (DI ATAS COPYRIGHT)
+    st.markdown(f"""
     <div class='version-tag'>
-                System Version: <b>{VERSION_TAG}</b><br>
-                Updated: {LAST_UPDATED}
-            </div>
+        System Version: <b>{VERSION_TAG}</b><br>
+        Updated: {LAST_UPDATED}
+    </div>
+    """, unsafe_allow_html=True)
+    
     st.caption("BP3MI Jateng © 2026")
 
 # --- KONTEN UTAMA ---
