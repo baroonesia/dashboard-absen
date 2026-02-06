@@ -105,7 +105,7 @@ def check_login():
         with col2:
             st.markdown("<div style='text-align:center; margin-top:50px;'>", unsafe_allow_html=True)
             st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=100)
-            st.markdown("### Login Sistem Absensi")
+            st.markdown("### Login Sistem Informasi Absensi")
             st.markdown("BP3MI Jawa Tengah")
             
             username_input = st.text_input("Username")
