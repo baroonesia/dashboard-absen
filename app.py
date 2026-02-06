@@ -5,7 +5,9 @@ import calendar
 from fpdf import FPDF
 import plotly.express as px
 from streamlit_gsheets import GSheetsConnection
-import time as time_lib 
+import time as time_lib
+# LIBRARY NAVIGASI MODERN
+from streamlit_option_menu import option_menu 
 
 # --- IMPORT VERSI OTOMATIS ---
 try:
@@ -432,56 +434,61 @@ def generate_pdf(df_source, year, month):
     
     return pdf.output(dest='S').encode('latin-1')
 
-# --- SIDEBAR MENU ---
+# --- SIDEBAR MENU MODERN ---
 with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=50)
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=60)
     st.markdown(f"**Halo, {USER_NAME}**")
     st.caption(f"Role: {USER_ROLE}")
     
-    if st.button("🔒 Logout"):
+    # Logout Button
+    if st.button("🔒 Logout", use_container_width=True):
         st.session_state['logged_in'] = False
-        st.session_state['user_role'] = None
         st.rerun()
-    st.divider()
     
-    # --- MENAMBAHKAN MENU TENTANG APLIKASI ---
-    menu_options = ["🏠 Dashboard", "📈 Analisis Pegawai", "📂 Manajemen Data", "ℹ️ Tentang Aplikasi"]
+    st.write("---")
+    
+    # KONFIGURASI NAVIGASI MODERN
+    menu_list = ["Dashboard", "Analisis Pegawai", "Manajemen Data", "Tentang Aplikasi"]
+    icon_list = ["house", "bar-chart-line", "folder2-open", "info-circle"]
+    
     if USER_ROLE == "Administrator":
-        menu_options.append("📜 System Logs")
-        
-    menu = st.radio("MENU UTAMA", menu_options)
-    st.divider()
+        menu_list.append("System Logs")
+        icon_list.append("journal-text")
+
+    # OPTION MENU COMPONENT
+    menu = option_menu(
+        menu_title=None, 
+        options=menu_list,
+        icons=icon_list,
+        menu_icon="cast", 
+        default_index=0,
+        styles={
+            "container": {"padding": "0!important", "background-color": "transparent"},
+            "icon": {"color": "var(--accent)", "font-size": "18px"}, 
+            "nav-link": {"font-size": "15px", "text-align": "left", "margin":"5px", "--hover-color": "#eee"},
+            "nav-link-selected": {"background-color": "var(--accent)", "font-weight": "600"},
+        }
+    )
+
+    st.write("---")
     if st.button("🔄 Refresh Data Cloud"):
         st.cache_data.clear()
         add_log("REFRESH", "Manual refresh") 
         st.rerun()
-    st.markdown(f"""
-    <div class='version-tag'>
-        System Version: <b>{VERSION_TAG}</b><br>
-        Updated: {LAST_UPDATED}
-    </div>
-    """, unsafe_allow_html=True)
+
+    # --- VERSI DI BAWAH ---
+    st.markdown(f"<div class='version-tag'>System Version: <b>{VERSION_TAG}</b><br>Updated: {LAST_UPDATED}</div>", unsafe_allow_html=True)
     st.caption("BP3MI Jateng © 2026")
 
 # --- KONTEN UTAMA ---
 df_global = get_data()
-
 now_indo = datetime.utcnow() + timedelta(hours=7)
-hari_indo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
-str_hari = hari_indo[now_indo.weekday()]
-str_tgl = now_indo.strftime('%d %B %Y')
-str_jam = now_indo.strftime('%H:%M')
+str_hari = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"][now_indo.weekday()]
+clock_html = f"<div class='clock-container-new'><div class='clock-time-new'>{now_indo.strftime('%H:%M')}</div><div class='clock-date-new'>{str_hari}, {now_indo.strftime('%d %B %Y')}</div></div>"
 
-clock_html = f"""
-<div class='clock-container-new'>
-    <div class='clock-time-new'>{str_jam}</div>
-    <div class='clock-date-new'>{str_hari}, {str_tgl}</div>
-</div>
-"""
+# --- LOGIKA KONTEN BERDASARKAN MENU MODERN ---
 
-# --- TAMPILAN MENU ---
-
-if menu == "ℹ️ Tentang Aplikasi":
+if menu == "Tentang Aplikasi":
     col_L, col_R = st.columns([2, 1])
     with col_L:
         st.markdown(f"""
@@ -496,7 +503,7 @@ if menu == "ℹ️ Tentang Aplikasi":
 
     # SECTION 1: INTRODUCTION (Bargaining Power Intro)
     st.markdown("""
-    Attendance Management System
+    ### 🚀 Enterprise-Grade Attendance Management System
     Sistem ini dirancang bukan sekadar sebagai alat pencatat, melainkan sebagai **Solusi Terintegrasi** untuk mengatasi kompleksitas manajemen jadwal kerja modern.
     Menggunakan arsitektur *Cloud-Hybrid*, sistem ini menjamin integritas data, efisiensi waktu rekapitulasi, dan akurasi pelaporan hingga 99.9%.
     """)
@@ -508,7 +515,7 @@ if menu == "ℹ️ Tentang Aplikasi":
     with c1:
         st.markdown("""
         <div class='feature-box'>
-            <div class='feature-title'>Anti-Overlap Shift Logic</div>
+            <div class='feature-title'>🧠 Anti-Overlap Shift Logic</div>
             <div class='feature-desc'>
                 Algoritma cerdas yang mampu membedakan <b>Shift Beruntun (Marathon)</b>, Lembur Lintas Hari, dan kepulangan pagi. 
                 Sistem otomatis memisahkan jam pulang shift kemarin dengan jam masuk shift hari ini tanpa intervensi manual.
@@ -519,7 +526,7 @@ if menu == "ℹ️ Tentang Aplikasi":
     with c2:
         st.markdown("""
         <div class='feature-box'>
-            <div class='feature-title'>Cloud Synchronization</div>
+            <div class='feature-title'>☁️ Cloud Synchronization</div>
             <div class='feature-desc'>
                 Data tersimpan aman di <b>Google Cloud Database</b>. Memungkinkan akses *real-time* dari berbagai perangkat, 
                 mencegah data hilang akibat kerusakan hardware lokal, dan memudahkan kolaborasi tim.
@@ -530,7 +537,7 @@ if menu == "ℹ️ Tentang Aplikasi":
     with c3:
         st.markdown("""
         <div class='feature-box'>
-            <div class='feature-title'>Automated Audit Report</div>
+            <div class='feature-title'>📑 Automated Audit Report</div>
             <div class='feature-desc'>
                 Generator laporan PDF otomatis yang <b>Siap Audit</b>. Dilengkapi dengan <i>Conditional Formatting</i> (pewarnaan otomatis) 
                 untuk memvisualisasikan kepatuhan, shift malam, dan ketidakhadiran dalam satu pandangan mata.
@@ -541,7 +548,7 @@ if menu == "ℹ️ Tentang Aplikasi":
     st.write("---")
 
     # SECTION 3: ISTILAH TEKNIS (TERMINOLOGI)
-    st.subheader("Terminologi & Logika Sistem")
+    st.subheader("📚 Terminologi & Logika Sistem")
     st.info("Pemahaman istilah ini penting untuk memastikan validitas data.")
     
     col_term1, col_term2 = st.columns(2)
@@ -569,7 +576,7 @@ if menu == "ℹ️ Tentang Aplikasi":
         """)
 
     # SECTION 4: SPESIFIKASI TEKNIS (Untuk Tim IT / Maintenance)
-    with st.expander("Spesifikasi Teknis (Developer Mode)"):
+    with st.expander("🛠️ Spesifikasi Teknis (Developer Mode)"):
         st.markdown(f"""
         * **Framework:** Python Streamlit (Frontend & Backend)
         * **Visualization:** Plotly Interactive Charts
@@ -580,189 +587,99 @@ if menu == "ℹ️ Tentang Aplikasi":
         * **Created by :** Prima Ammaray
         """)
 
-elif menu == "🏠 Dashboard":
+elif menu == "Dashboard":
     col_L, col_R = st.columns([2, 1])
-    with col_L:
-        st.markdown(f"""
-        <div style='padding-top:10px;'>
-            <div class='header-title'>Dashboard Absensi</div>
-            <div class='header-subtitle'>Monitoring Kehadiran Outsourcing</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col_R:
-        st.markdown(clock_html, unsafe_allow_html=True)
+    with col_L: st.markdown("<div class='header-title'>Dashboard Absensi</div><div class='header-subtitle'>Monitoring Kehadiran Outsourcing</div>", unsafe_allow_html=True)
+    with col_R: st.markdown(clock_html, unsafe_allow_html=True)
     st.markdown("---")
-    
     if not df_global.empty:
         total_p = df_global['Nama'].nunique()
         lengkap = len(df_global[df_global['Status_Data'].str.contains('Lengkap')])
         tl = len(df_global[df_global['Status_Data'].str.contains('Tidak')])
-        
         m1, m2, m3 = st.columns(3)
         m1.markdown(f"<div class='metric-card'><h4>👥 Pegawai</h4><h1>{total_p}</h1></div>", unsafe_allow_html=True)
         m2.markdown(f"<div class='metric-card'><h4>✅ Hadir</h4><h1 style='color:#10B981;'>{lengkap}</h1></div>", unsafe_allow_html=True)
         m3.markdown(f"<div class='metric-card'><h4>⚠️ Tdk Lengkap</h4><h1 style='color:#F59E0B;'>{tl}</h1></div>", unsafe_allow_html=True)
         st.write("### 📋 Log Masuk Terakhir")
         st.dataframe(df_global.sort_values('Tanggal', ascending=False).head(10), use_container_width=True)
-    else:
-        st.info("Database kosong.")
+    else: st.info("Database kosong.")
 
-elif menu == "📈 Analisis Pegawai":
+elif menu == "Analisis Pegawai":
     col_L, col_R = st.columns([2, 1])
-    with col_L:
-        st.markdown("<div class='header-title'>Analisis Performa</div>", unsafe_allow_html=True)
-    with col_R:
-        st.markdown(clock_html, unsafe_allow_html=True)
-    
+    with col_L: st.markdown("<div class='header-title'>Analisis Performa</div>", unsafe_allow_html=True)
+    with col_R: st.markdown(clock_html, unsafe_allow_html=True)
     if not df_global.empty:
         st.write("---")
-        
-        # 1. SIAPKAN DATA NAMA UNTUK FILTER
-        # Ambil daftar nama unik dari database
+        # --- FITUR MULTISELECT FILTER ---
         all_pegawai = sorted(df_global['Nama'].unique().tolist())
-        
-        # 2. LAYOUT FILTER (3 Kolom: Bulan, Tahun, Nama)
         c1, c2, c3 = st.columns([1, 1, 2])
+        with c1: sel_bulan = st.selectbox("Bulan", range(1, 13), index=datetime.now().month-1, format_func=lambda x: calendar.month_name[x])
+        with c2: sel_tahun = st.number_input("Tahun", value=datetime.now().year)
+        with c3: sel_nama = st.multiselect("🔍 Cari Pegawai", all_pegawai)
         
-        with c1:
-            sel_bulan = st.selectbox("Pilih Bulan", range(1, 13), index=datetime.now().month-1, format_func=lambda x: calendar.month_name[x])
-        with c2:
-            sel_tahun = st.number_input("Pilih Tahun", value=datetime.now().year)
-        with c3:
-            # FITUR BARU: MULTISELECT FILTER
-            sel_nama = st.multiselect("🔍 Cari & Filter Nama Pegawai (Kosongkan untuk Semua)", all_pegawai)
-
         df_global['Tanggal'] = pd.to_datetime(df_global['Tanggal'])
-        
-        # 3. TERAPKAN LOGIKA FILTER
-        # Filter Waktu (Bulan & Tahun)
         mask = (df_global['Tanggal'].dt.month == sel_bulan) & (df_global['Tanggal'].dt.year == sel_tahun)
-        
-        # Filter Nama (Jika ada yang dipilih)
-        if sel_nama:
-            mask = mask & (df_global['Nama'].isin(sel_nama))
-            
+        if sel_nama: mask = mask & (df_global['Nama'].isin(sel_nama))
         df_filtered = df_global[mask]
-
+        
         if not df_filtered.empty:
-            # Tampilkan info data siapa yang sedang ditampilkan
-            if sel_nama:
-                nama_display = ", ".join(sel_nama)
-                if len(sel_nama) > 2: nama_display = f"{len(sel_nama)} Pegawai Terpilih"
-                st.success(f"Data: **{calendar.month_name[sel_bulan]} {sel_tahun}** | Filter: **{nama_display}**")
-            else:
-                st.success(f"Data: **{calendar.month_name[sel_bulan]} {sel_tahun}** | Filter: **Semua Pegawai**")
-                
+            if sel_nama: st.success(f"Data: {len(sel_nama)} Pegawai Terpilih")
+            else: st.success("Data: Semua Pegawai")
+            
             gc1, gc2 = st.columns(2)
             with gc1:
-                st.write("**Grafik Kepatuhan**")
                 chart_data = df_filtered.copy()
-                chart_data['Kategori'] = chart_data['Status_Data'].apply(
-                    lambda x: 'Lengkap' if 'Lengkap' in x else ('Tidak Absen Pagi' if 'Pagi' in x else 'Tidak Absen Pulang')
-                )
-                chart_data_grp = chart_data.groupby(['Nama', 'Kategori']).size().reset_index(name='Jumlah')
-                fig = px.bar(chart_data_grp, x='Nama', y='Jumlah', color='Kategori', 
-                             color_discrete_map={'Lengkap':'#2563EB', 'Tidak Absen Pagi':'#EF553B', 'Tidak Absen Pulang':'#F59E0B'})
+                chart_data['Kategori'] = chart_data['Status_Data'].apply(lambda x: 'Lengkap' if 'Lengkap' in x else ('Tidak Absen Pagi' if 'Pagi' in x else 'Tidak Absen Pulang'))
+                fig = px.bar(chart_data.groupby(['Nama', 'Kategori']).size().reset_index(name='Jumlah'), x='Nama', y='Jumlah', color='Kategori', color_discrete_map={'Lengkap':'#2563EB', 'Tidak Absen Pagi':'#EF553B', 'Tidak Absen Pulang':'#F59E0B'})
                 st.plotly_chart(fig, use_container_width=True)
             with gc2:
-                st.write("**Proporsi**")
-                pie = df_filtered['Status_Data'].value_counts().reset_index()
-                pie.columns = ['Status','Jumlah']
-                fig2 = px.pie(pie, values='Jumlah', names='Status', hole=0.6)
-                st.plotly_chart(fig2, use_container_width=True)
-            
-            st.markdown(f"### 📋 Daftar Detail")
-            df_display = df_filtered.copy()
-            df_display['Tanggal'] = df_display['Tanggal'].dt.date
+                pie = df_filtered['Status_Data'].value_counts().reset_index(); pie.columns = ['Status','Jumlah']
+                st.plotly_chart(px.pie(pie, values='Jumlah', names='Status', hole=0.6), use_container_width=True)
+            df_display = df_filtered.copy(); df_display['Tanggal'] = df_display['Tanggal'].dt.date
             st.dataframe(df_display.sort_values('Tanggal'), use_container_width=True, hide_index=True)
-        else:
-            st.warning("Data tidak ditemukan untuk kriteria filter tersebut.")
-    else:
-        st.warning("Database kosong.")
+        else: st.warning("Data tidak ditemukan.")
+    else: st.warning("Database kosong.")
 
-elif menu == "📂 Manajemen Data":
+elif menu == "Manajemen Data":
     col_L, col_R = st.columns([2, 1])
-    with col_L:
-        st.markdown("<div class='header-title'>Manajemen Data</div>", unsafe_allow_html=True)
-    with col_R:
-        st.markdown(clock_html, unsafe_allow_html=True)
+    with col_L: st.markdown("<div class='header-title'>Manajemen Data</div>", unsafe_allow_html=True)
+    with col_R: st.markdown(clock_html, unsafe_allow_html=True)
     st.write("---")
-    
     tabs_list = ["Upload Data", "Download Laporan"]
-    if USER_ROLE == "Administrator":
-        tabs_list.append("⚠️ Hapus Database")
-        
+    if USER_ROLE == "Administrator": tabs_list.append("⚠️ Hapus Database")
     mytabs = st.tabs(tabs_list)
-    
     with mytabs[0]: 
         f = st.file_uploader("Upload .txt", type=['txt'])
         if f and st.button("Simpan Data"):
-            progress_text = "Memulai proses..."
-            my_bar = st.progress(0, text=progress_text)
-            
-            time_lib.sleep(0.5)
-            my_bar.progress(30, text="📂 Membaca & Membersihkan Data...")
-            res = process_file(f)
-            
-            time_lib.sleep(0.5)
-            my_bar.progress(60, text="🧠 Analisis Cerdas (Anti-Overlap Shift)...")
-            
-            my_bar.progress(90, text="☁️ Sinkronisasi ke Database...")
-            saved = save_data(res)
-            
-            if saved:
-                my_bar.progress(100, text="✅ Selesai!")
-                time_lib.sleep(0.5)
-                my_bar.empty()
-                add_log("UPLOAD", f.name)
-                st.success(f"Berhasil memproses {len(res)} data presensi!")
-                st.balloons()
-    
+            bar = st.progress(0, text="Membaca Data...")
+            res = process_file(f); bar.progress(60, text="Analisis Cerdas...")
+            if save_data(res):
+                bar.progress(100, text="Berhasil!"); add_log("UPLOAD", f.name); st.success("Selesai!"); st.balloons()
     with mytabs[1]: 
         c1, c2 = st.columns(2)
-        b = c1.selectbox("Bulan", range(1,13), index=datetime.now().month-1)
-        t = c2.number_input("Tahun", value=datetime.now().year)
-        if st.button("Proses Laporan"):
+        b = c1.selectbox("Laporan Bulan", range(1,13), index=datetime.now().month-1); t = c2.number_input("Laporan Tahun", value=datetime.now().year)
+        if st.button("Proses PDF"):
             df_global['Tanggal'] = pd.to_datetime(df_global['Tanggal'])
-            mask = (df_global['Tanggal'].dt.month == b) & (df_global['Tanggal'].dt.year == t)
-            df_filt = df_global[mask]
+            df_filt = df_global[(df_global['Tanggal'].dt.month == b) & (df_global['Tanggal'].dt.year == t)]
             if not df_filt.empty:
                 df_filt['Tanggal'] = df_filt['Tanggal'].dt.date
-                pdf_bytes = generate_pdf(df_filt, t, b)
-                add_log("DOWNLOAD", f"Unduh PDF Periode {b}/{t}")
-                st.download_button("Unduh PDF", pdf_bytes, f"Laporan Absensi Bulan {b} Tahun {t}.pdf", "application/pdf")
-            else:
-                st.error("Data kosong.")
-
+                pdf = generate_pdf(df_filt, t, b); add_log("DOWNLOAD", f"PDF {b}/{t}")
+                st.download_button("Unduh PDF", pdf, f"Laporan_{b}_{t}.pdf", "application/pdf")
+            else: st.error("Data kosong.")
     if USER_ROLE == "Administrator":
         with mytabs[2]:
             st.error("⚠️ PERHATIAN: Hapus data bersifat permanen!")
-            confirm_del = st.checkbox("Saya mengerti dan ingin menghapus seluruh data.")
-            if confirm_del:
-                if st.button("HAPUS SEMUA DATA PERMANEN", type="primary"):
-                    if clear_all_data():
-                        add_log("DELETE_ALL", "Administrator menghapus seluruh database absensi")
-                        st.success("Database berhasil dikosongkan.")
-                        time_lib.sleep(2)
-                        st.rerun()
+            if st.checkbox("Konfirmasi Hapus Seluruh Database"):
+                if st.button("HAPUS PERMANEN", type="primary"):
+                    if clear_all_data(): add_log("DELETE_ALL", "DB Cleared"); st.rerun()
 
-elif menu == "📜 System Logs":
+elif menu == "System Logs":
     col_L, col_R = st.columns([2, 1])
     with col_L:
         st.markdown("<div class='header-title'>System Logs</div>", unsafe_allow_html=True)
     with col_R:
         st.markdown(clock_html, unsafe_allow_html=True)
     st.write("---")
-    
-    if st.button("🔄 Refresh Log"):
-        st.cache_data.clear()
-        st.rerun()
-    
-    with st.spinner("Memuat data log..."):
-        log_df = get_logs()
-    
-    if not log_df.empty:
-        log_df['Waktu'] = log_df['Waktu'].astype(str)
-        st.dataframe(log_df.sort_values(by="Waktu", ascending=False), use_container_width=True, hide_index=True)
-    else:
-        st.info("Log kosong.")
+    if st.button("🔄 Refresh Log"): st.cache_data.clear(); st.rerun()
+    log_df = get_logs()
+    if not log_df.empty: st.dataframe(log_df.sort_values(by="Waktu", ascending=False), use_container_width=True, hide_index=True)
