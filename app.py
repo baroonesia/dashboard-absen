@@ -577,7 +577,7 @@ if menu == "ℹ️ Tentang Aplikasi":
         * **Data Processing:** Pandas (Vectorized operations for speed)
         * **Current Version:** {VERSION_TAG}
         * **Last Build:** {LAST_UPDATED}
-        * **Created by : Prima Ammaray
+        * **Created by :** Prima Ammaray
         """)
 
 elif menu == "🏠 Dashboard":
