@@ -5,7 +5,7 @@ import calendar
 from fpdf import FPDF
 import plotly.express as px
 from streamlit_gsheets import GSheetsConnection
-import time as time_lib # Rename agar tidak bentrok dengan datetime.time
+import time as time_lib 
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Sistem Absensi BP3MI", layout="wide", page_icon="🏢")
@@ -58,7 +58,6 @@ st.markdown("""
         font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-top: 5px;
     }
     
-    /* Login Box Style */
     .login-container {
         max-width: 400px; margin: 100px auto; padding: 30px; border-radius: 12px;
         background-color: var(--bg-card); border: 1px solid var(--border);
@@ -67,10 +66,10 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- KONEKSI DATABASE (GLOBAL) ---
+# --- KONEKSI DATABASE ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- LOGIKA LOGIN DINAMIS ---
+# --- LOGIN SYSTEM ---
 def get_users_db():
     try:
         df = conn.read(worksheet="Users", ttl=0)
@@ -121,13 +120,11 @@ def check_login():
 if not check_login():
     st.stop()
 
-# ==============================================================================
-#  AREA AKSES SETELAH LOGIN
-# ==============================================================================
+# --- AKSES DITERIMA ---
 USER_ROLE = st.session_state['user_role']
 USER_NAME = st.session_state['user_name']
 
-# --- FUNGSI CRUD DATA ---
+# --- CRUD DATA ---
 def get_data():
     try:
         df = conn.read(worksheet="Data_Utama", ttl="0")
@@ -163,7 +160,7 @@ def clear_all_data():
         st.error(f"Gagal menghapus: {e}")
         return False
 
-# --- FUNGSI LOGGING ---
+# --- LOGGING ---
 def get_logs():
     try:
         df_logs = conn.read(worksheet="Log_Sistem", ttl=0)
@@ -184,7 +181,7 @@ def add_log(aksi, detail):
     except Exception as e:
         st.error(f"Gagal log: {e}")
 
-# --- FUNGSI PROSES FILE (UPDATE LOGIC SHIFT 18:15) ---
+# --- PROSES FILE (STATUS RINCI + LOGIC 18:15) ---
 def process_file(file):
     try:
         df = pd.read_csv(file, sep='\t', header=None, names=['ID','Timestamp','Mch','Cd','Nama','Status','X1','X2'])
@@ -213,17 +210,16 @@ def process_file(file):
             if not timestamps:
                 continue
 
-            # LOGIKA UTAMA
+            # Inisialisasi
             log_pertama = timestamps[0]
             log_terakhir = timestamps[-1] if len(timestamps) > 1 else None
             
             jam_masuk_fix = "-"
             jam_pulang_fix = "-"
-            status_data = "Tidak Lengkap"
+            status_data = "Tidak Absen Pulang" # Default jika cuma ada log pertama
             
-            # Helper untuk cek waktu
+            # Helper Waktu
             waktu_log = log_pertama.time()
-            # Batas Shift Malam: 18:15
             batas_malam = time(18, 15)
 
             # --- SKENARIO 1: MASUK PAGI NORMAL (< 13:00) ---
@@ -231,34 +227,35 @@ def process_file(file):
                 jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
                 if log_terakhir:
                     jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
-                    status_data = "Lengkap"
+                    status_data = "Lengkap (Normal)"
+                else:
+                    status_data = "Tidak Absen Pulang"
             
-            # --- SKENARIO 2: ABSEN SORE (ZONA AMBIGU 13:00 - 18:14) ---
-            # Jika < 18:15 tapi >= 13:00
+            # --- SKENARIO 2: ZONA AMBIGU SIANG (13:00 - 18:14) ---
             elif log_pertama.hour >= 13 and waktu_log < batas_malam:
-                # Jika cuma 1 log, asumsi PULANG (Lupa Absen Pagi)
                 if log_terakhir is None:
+                    # Cuma 1 log sore = Lupa Absen Pagi
                     jam_masuk_fix = "-"
                     jam_pulang_fix = log_pertama.strftime('%H:%M:%S')
-                    status_data = "Tidak Lengkap"
+                    status_data = "Tidak Absen Pagi"
                 else:
-                    # Ada > 1 log, Shift Siang
+                    # Ada > 1 log = Shift Siang Normal
                     jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
                     jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
-                    status_data = "Lengkap"
+                    status_data = "Lengkap (Normal)"
 
             # --- SKENARIO 3: SHIFT MALAM (>= 18:15) ---
             else: # waktu_log >= 18:15
                 jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
                 
-                # Cek apakah pulang di hari yang sama?
+                # Cek pulang hari sama (Lembur pendek)
                 if log_terakhir:
                     durasi = (log_terakhir - log_pertama).total_seconds() / 3600
                     if durasi > 3:
                         jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
-                        status_data = "Lengkap (Lembur)"
+                        status_data = "Lengkap (Normal)"
                 
-                # Jika belum ketemu pulang, cari BESOK PAGI
+                # Cek pulang besok pagi
                 if jam_pulang_fix == "-":
                     tgl_besok = tgl + timedelta(days=1)
                     if tgl_besok in dates:
@@ -266,10 +263,10 @@ def process_file(file):
                         if not logs_besok.empty:
                             timestamps_besok = sorted(logs_besok['Timestamp'].tolist())
                             potential_out = timestamps_besok[0]
-                            # Syarat: Absen besok sebelum jam 12 siang
+                            # Syarat: Pulang sebelum jam 12 siang besoknya
                             if potential_out.hour < 12:
                                 jam_pulang_fix = potential_out.strftime('%H:%M:%S')
-                                status_data = "Lengkap (Shift Malam)"
+                                status_data = "Lengkap (Malam)"
                                 skip_dates.append(tgl_besok)
 
             final_data.append({
@@ -286,7 +283,7 @@ def process_file(file):
     else:
         return pd.DataFrame(columns=['Nama', 'Tanggal', 'Jam_Masuk', 'Jam_Pulang', 'Status_Data'])
 
-# --- FUNGSI PDF ---
+# --- FUNGSI PDF (WARNA-WARNI SESUAI KETERANGAN BARU) ---
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -342,12 +339,15 @@ def generate_pdf(df_source, year, month):
                 m = "-" if m in ["None","nan"] else m
                 p = "-" if p in ["None","nan"] else p
                 
+                # --- LOGIKA WARNA STATUS ---
                 if "Lengkap" in stat:
-                     if "Shift Malam" in stat: pdf.set_fill_color(173, 216, 230)
-                     else: pdf.set_fill_color(144, 238, 144)
+                     if "Malam" in stat: pdf.set_fill_color(173, 216, 230) # Biru Muda (Shift Malam)
+                     else: pdf.set_fill_color(144, 238, 144) # Hijau (Shift Normal)
                      txt = f"{m}\n{p}"; h += 1
                 else:
+                    # Kuning untuk Tidak Absen Pagi / Pulang
                     pdf.set_fill_color(255, 255, 102); txt = f"{m if m!='-' else p}"; tl += 1
+                
                 fill = True
             else:
                 if calendar.weekday(year, month, d) < 5:
@@ -364,7 +364,7 @@ def generate_pdf(df_source, year, month):
         pdf.cell(col_summary, 10, str(tl), 1, 1, 'C')
     return pdf.output(dest='S').encode('latin-1')
 
-# --- 6. SIDEBAR MENU DINAMIS ---
+# --- SIDEBAR MENU ---
 with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=50)
     st.markdown(f"**Halo, {USER_NAME}**")
@@ -374,16 +374,13 @@ with st.sidebar:
         st.session_state['logged_in'] = False
         st.session_state['user_role'] = None
         st.rerun()
-        
     st.divider()
     
-    # ATURAN MENU BERDASARKAN ROLE
     menu_options = ["🏠 Dashboard", "📈 Analisis Pegawai", "📂 Manajemen Data"]
     if USER_ROLE == "Administrator":
         menu_options.append("📜 System Logs")
         
     menu = st.radio("MENU UTAMA", menu_options)
-    
     st.divider()
     if st.button("🔄 Refresh Data Cloud"):
         st.cache_data.clear()
@@ -391,7 +388,7 @@ with st.sidebar:
         st.rerun()
     st.caption("BP3MI Jateng © 2026")
 
-# --- 7. KONTEN UTAMA ---
+# --- KONTEN UTAMA ---
 df_global = get_data()
 
 now_indo = datetime.utcnow() + timedelta(hours=7)
@@ -407,8 +404,7 @@ clock_html = f"""
 </div>
 """
 
-# --- TAMPILAN PER MENU ---
-
+# --- TAMPILAN MENU ---
 if menu == "🏠 Dashboard":
     col_L, col_R = st.columns([2, 1])
     with col_L:
@@ -424,8 +420,10 @@ if menu == "🏠 Dashboard":
     
     if not df_global.empty:
         total_p = df_global['Nama'].nunique()
+        # Hitung dengan filter kata kunci yang lebih luas
         lengkap = len(df_global[df_global['Status_Data'].str.contains('Lengkap')])
-        tl = len(df_global[df_global['Status_Data'] == 'Tidak Lengkap'])
+        tl = len(df_global[df_global['Status_Data'].str.contains('Tidak')])
+        
         m1, m2, m3 = st.columns(3)
         m1.markdown(f"<div class='metric-card'><h4>👥 Pegawai</h4><h1>{total_p}</h1></div>", unsafe_allow_html=True)
         m2.markdown(f"<div class='metric-card'><h4>✅ Hadir</h4><h1 style='color:#10B981;'>{lengkap}</h1></div>", unsafe_allow_html=True)
@@ -459,11 +457,15 @@ elif menu == "📈 Analisis Pegawai":
             gc1, gc2 = st.columns(2)
             with gc1:
                 st.write("**Grafik Kepatuhan**")
+                # Sederhanakan status untuk grafik agar tidak terlalu ramai
                 chart_data = df_filtered.copy()
-                chart_data['Status_Simple'] = chart_data['Status_Data'].apply(lambda x: 'Lengkap' if 'Lengkap' in x else 'Tidak Lengkap')
+                chart_data['Kategori'] = chart_data['Status_Data'].apply(
+                    lambda x: 'Lengkap' if 'Lengkap' in x else ('Tidak Absen Pagi' if 'Pagi' in x else 'Tidak Absen Pulang')
+                )
                 
-                chart_data_grp = chart_data.groupby(['Nama', 'Status_Simple']).size().reset_index(name='Jumlah')
-                fig = px.bar(chart_data_grp, x='Nama', y='Jumlah', color='Status_Simple', color_discrete_map={'Lengkap':'#2563EB', 'Tidak Lengkap':'#EF553B'})
+                chart_data_grp = chart_data.groupby(['Nama', 'Kategori']).size().reset_index(name='Jumlah')
+                fig = px.bar(chart_data_grp, x='Nama', y='Jumlah', color='Kategori', 
+                             color_discrete_map={'Lengkap':'#2563EB', 'Tidak Absen Pagi':'#EF553B', 'Tidak Absen Pulang':'#F59E0B'})
                 st.plotly_chart(fig, use_container_width=True)
             with gc2:
                 st.write("**Proporsi**")
@@ -521,9 +523,7 @@ elif menu == "📂 Manajemen Data":
 
     if USER_ROLE == "Administrator":
         with mytabs[2]:
-            st.error("⚠️ PERHATIAN: Tindakan ini akan menghapus SELURUH data absensi pegawai!")
-            st.warning("Data User dan Log tidak akan terhapus.")
-            
+            st.error("⚠️ PERHATIAN: Hapus data bersifat permanen!")
             confirm_del = st.checkbox("Saya mengerti dan ingin menghapus seluruh data.")
             if confirm_del:
                 if st.button("HAPUS SEMUA DATA PERMANEN", type="primary"):
