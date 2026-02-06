@@ -48,6 +48,7 @@ st.markdown("""
     .header-title { font-size: 2rem; font-weight: 800; color: var(--text-main); line-height: 1.2; }
     .header-subtitle { font-size: 1rem; color: var(--text-sub); font-weight: 400; }
 
+    /* CSS JAM YANG KONSISTEN */
     .clock-container-new {
         display: flex; flex-direction: column; align-items: flex-end; justify-content: center; height: 100%;
     }
@@ -74,12 +75,10 @@ st.markdown("""
 
 # --- SISTEM LOGIN (AUTHENTICATION) ---
 def check_login():
-    """Memeriksa status login session"""
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False
     
     if not st.session_state['logged_in']:
-        # Tampilan Halaman Login
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
             st.markdown("<div style='text-align:center; margin-top:50px;'>", unsafe_allow_html=True)
@@ -91,7 +90,6 @@ def check_login():
             password_input = st.text_input("Password", type="password")
             
             if st.button("Masuk Sistem", use_container_width=True):
-                # Cek kredensial dari st.secrets
                 try:
                     SEC_USER = st.secrets["auth"]["username"]
                     SEC_PASS = st.secrets["auth"]["password"]
@@ -102,13 +100,12 @@ def check_login():
                     else:
                         st.error("Username atau Password salah!")
                 except Exception:
-                    st.error("Konfigurasi Secrets [auth] belum disetting di Streamlit Cloud!")
+                    st.error("Konfigurasi Secrets [auth] belum disetting!")
             
             st.markdown("</div>", unsafe_allow_html=True)
-        return False # Belum login
-    return True # Sudah login
+        return False 
+    return True 
 
-# --- JIKA BELUM LOGIN, STOP EKSEKUSI KODE DI BAWAH ---
 if not check_login():
     st.stop()
 
@@ -261,7 +258,6 @@ with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg/960px-Logo_Kementerian_Pelindungan_Pekerja_Migran_Indonesia_-_BP2MI_v2_%282024%29.svg.png", width=50)
     st.markdown("BP3MI Jawa Tengah")
     
-    # Tombol Logout
     if st.button("🔒 Logout"):
         st.session_state['logged_in'] = False
         st.rerun()
@@ -277,16 +273,26 @@ with st.sidebar:
     st.caption("Connected to Database")
     st.caption("Pranata Komputer - BP3MI Jateng © 2026")
 
-# --- 7. DASHBOARD CONTENT ---
+# --- 7. KONTEN UTAMA ---
 df_global = get_data()
 
+# --- PERHITUNGAN WAKTU GLOBAL (AGAR BISA DIPAKAI SEMUA MENU) ---
+now_indo = datetime.utcnow() + timedelta(hours=7)
+hari_indo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+str_hari = hari_indo[now_indo.weekday()]
+str_tgl = now_indo.strftime('%d %B %Y')
+str_jam = now_indo.strftime('%H:%M')
+
+clock_html = f"""
+<div class='clock-container-new'>
+    <div class='clock-time-new'>{str_jam}</div>
+    <div class='clock-date-new'>{str_hari}, {str_tgl}</div>
+</div>
+"""
+
+# --- LOGIKA TAMPILAN PER MENU ---
+
 if menu == "🏠 Dashboard":
-    now_indo = datetime.utcnow() + timedelta(hours=7)
-    hari_indo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
-    str_hari = hari_indo[now_indo.weekday()]
-    str_tgl = now_indo.strftime('%d %B %Y')
-    str_jam = now_indo.strftime('%H:%M') 
-    
     col_L, col_R = st.columns([2, 1])
     with col_L:
         st.markdown(f"""
@@ -296,12 +302,8 @@ if menu == "🏠 Dashboard":
         </div>
         """, unsafe_allow_html=True)
     with col_R:
-        st.markdown(f"""
-        <div class='clock-container-new'>
-            <div class='clock-time-new'>{str_jam}</div>
-            <div class='clock-date-new'>{str_hari}, {str_tgl}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(clock_html, unsafe_allow_html=True)
+        
     st.markdown("---")
     
     if not df_global.empty:
@@ -318,13 +320,12 @@ if menu == "🏠 Dashboard":
         st.info("Database kosong.")
 
 elif menu == "📈 Analisis Pegawai":
-    now_indo = datetime.utcnow() + timedelta(hours=7)
-    hari_indo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
-    str_hari = hari_indo[now_indo.weekday()]
-    str_tgl = now_indo.strftime('%d %B %Y')
-    str_jam = now_indo.strftime('%H:%M') 
-    
-    st.markdown("<div class='header-title'>Analisis Performa Bulanan</div>", unsafe_allow_html=True)
+    col_L, col_R = st.columns([2, 1])
+    with col_L:
+        st.markdown("<div class='header-title'>Analisis Performa</div>", unsafe_allow_html=True)
+    with col_R:
+        st.markdown(clock_html, unsafe_allow_html=True)
+        
     if not df_global.empty:
         st.write("---")
         col_filter1, col_filter2 = st.columns(2)
@@ -361,7 +362,12 @@ elif menu == "📈 Analisis Pegawai":
         st.warning("Belum ada data sama sekali di sistem.")
 
 elif menu == "📂 Manajemen Data":
-    st.markdown("<div class='header-title'>Manajemen Data</div>", unsafe_allow_html=True)
+    col_L, col_R = st.columns([2, 1])
+    with col_L:
+        st.markdown("<div class='header-title'>Manajemen Data</div>", unsafe_allow_html=True)
+    with col_R:
+        st.markdown(clock_html, unsafe_allow_html=True)
+        
     st.write("---")
     t1, t2 = st.tabs(["Upload Data", "Download Laporan"])
     with t1:
@@ -388,7 +394,12 @@ elif menu == "📂 Manajemen Data":
                 st.error("Data kosong.")
 
 elif menu == "📜 System Logs":
-    st.markdown("<div class='header-title'>System Logs</div>", unsafe_allow_html=True)
+    col_L, col_R = st.columns([2, 1])
+    with col_L:
+        st.markdown("<div class='header-title'>System Logs</div>", unsafe_allow_html=True)
+    with col_R:
+        st.markdown(clock_html, unsafe_allow_html=True)
+        
     st.write("---")
     if st.button("🔄 Refresh Log"):
         st.cache_data.clear()
