@@ -181,7 +181,7 @@ def add_log(aksi, detail):
     except Exception as e:
         st.error(f"Gagal log: {e}")
 
-# --- PROSES FILE (NEW ALGORITHM: TIMESTAMP TRACKING) ---
+# --- PROSES FILE (ANTI-OVERLAP SHIFT LOGIC) ---
 def process_file(file):
     try:
         df = pd.read_csv(file, sep='\t', header=None, names=['ID','Timestamp','Mch','Cd','Nama','Status','X1','X2'])
@@ -200,15 +200,13 @@ def process_file(file):
         dates = sorted(group['Tanggal_Asli'].unique())
         
         # ALGORITMA BARU: TRACKING LOG YANG SUDAH TERPAKAI
-        # Set ini berisi Timestamp spesifik yang sudah dijadikan "Jam Pulang"
-        # Sehingga log ini tidak akan diproses lagi sebagai "Jam Masuk"
         used_timestamps = set()
 
         for i, tgl in enumerate(dates):
             logs_hari_ini = group[group['Tanggal_Asli'] == tgl]
             timestamps = sorted(logs_hari_ini['Timestamp'].tolist())
             
-            # FILTER: Buang log yang sudah terpakai (Misal dipinjam shift malam kemarin)
+            # FILTER: Buang log yang sudah terpakai
             timestamps = [t for t in timestamps if t not in used_timestamps]
             
             if not timestamps:
@@ -270,7 +268,6 @@ def process_file(file):
                         logs_besok = group[group['Tanggal_Asli'] == tgl_besok]
                         if not logs_besok.empty:
                             timestamps_besok = sorted(logs_besok['Timestamp'].tolist())
-                            # Ambil log paling pagi di hari besok
                             potential_out = timestamps_besok[0]
                             
                             # Syarat: Pulang sebelum jam 13:00 siang besoknya
@@ -278,8 +275,7 @@ def process_file(file):
                                 jam_pulang_fix = potential_out.strftime('%H:%M:%S')
                                 status_data = "Lengkap (Malam)"
                                 
-                                # KUNCI UTAMA: Tandai log besok ini sebagai "Terpakai"
-                                # Agar saat loop besok jalan, log ini DI-SKIP dan tidak dianggap Masuk Pagi
+                                # KUNCI: Tandai log besok ini sebagai "Terpakai"
                                 used_timestamps.add(potential_out)
 
             final_data.append({
@@ -536,10 +532,31 @@ elif menu == "📂 Manajemen Data":
     with mytabs[0]: 
         f = st.file_uploader("Upload .txt", type=['txt'])
         if f and st.button("Simpan Data"):
+            # Progress Bar Container
+            progress_text = "Memulai proses..."
+            my_bar = st.progress(0, text=progress_text)
+            
+            # Stage 1: Reading (30%)
+            time_lib.sleep(0.5)
+            my_bar.progress(30, text="📂 Membaca & Membersihkan Data...")
             res = process_file(f)
-            if save_data(res):
+            
+            # Stage 2: Analyzing (60%)
+            time_lib.sleep(0.5)
+            my_bar.progress(60, text="🧠 Analisis Cerdas (Anti-Overlap Shift)...")
+            
+            # Stage 3: Saving (90%)
+            my_bar.progress(90, text="☁️ Sinkronisasi ke Database...")
+            saved = save_data(res)
+            
+            # Stage 4: Finish (100%)
+            if saved:
+                my_bar.progress(100, text="✅ Selesai!")
+                time_lib.sleep(0.5)
+                my_bar.empty()
                 add_log("UPLOAD", f.name)
-                st.success("Berhasil!")
+                st.success(f"Berhasil memproses {len(res)} data presensi!")
+                st.balloons()
     
     with mytabs[1]: 
         c1, c2 = st.columns(2)
