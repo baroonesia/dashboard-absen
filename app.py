@@ -527,7 +527,7 @@ if menu == "Tentang Aplikasi":
     st.write("---")
     
     # PARAMETER TERMINOLOGI & DETAIL TEKNIS
-    st.subheader("📚 Terminologi & Logika Sistem")
+    st.subheader("Terminologi & Logika Sistem")
     col_term1, col_term2 = st.columns(2)
     with col_term1:
         st.markdown("""
@@ -543,7 +543,7 @@ if menu == "Tentang Aplikasi":
         """)
     
     # INFO VERSI (PARAMETER SYSTEM)
-    with st.expander("🛠️ Spesifikasi Teknis & Versi"):
+    with st.expander("Spesifikasi Teknis & Versi"):
         st.markdown(f"""
         * **Framework:** Python Streamlit
         * **Database:** Google Sheets API (via st.connection)
