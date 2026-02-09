@@ -494,7 +494,7 @@ if menu == "Tentang Aplikasi":
 
     # KONTEN UTAMA DENGAN PARAMETER YANG DIKEMBALIKAN
     st.markdown("""
-    ### 🚀 Enterprise-Grade Attendance Management System
+    Enterprise-Grade Attendance Management System
     Sistem ini dirancang sebagai **Solusi Terintegrasi** untuk mengelola kompleksitas jadwal kerja secara modern di lingkungan BP3MI Jawa Tengah. 
     Dengan arsitektur *Cloud-Hybrid*, sistem menjamin efisiensi rekapitulasi dan akurasi pelaporan yang tinggi.
     """)
@@ -505,21 +505,21 @@ if menu == "Tentang Aplikasi":
     with c1:
         st.markdown("""
         <div class='feature-box'>
-            <div class='feature-title'>🧠 Anti-Overlap Logic</div>
+            <div class='feature-title'>Anti-Overlap Logic</div>
             <div class='feature-desc'>Algoritma cerdas yang mampu membedakan <b>Shift Beruntun</b>, Lembur Lintas Hari, dan kepulangan pagi secara otomatis.</div>
         </div>
         """, unsafe_allow_html=True)
     with c2:
         st.markdown("""
         <div class='feature-box'>
-            <div class='feature-title'>☁️ Cloud Sync & Security</div>
+            <div class='feature-title'>Cloud Sync & Security</div>
             <div class='feature-desc'>Data tersimpan aman di <b>Google Cloud Database</b>. Memungkinkan akses real-time dan kolaboratif antar admin.</div>
         </div>
         """, unsafe_allow_html=True)
     with c3:
         st.markdown("""
         <div class='feature-box'>
-            <div class='feature-title'>📑 Automated PDF Report</div>
+            <div class='feature-title'>Automated PDF Report</div>
             <div class='feature-desc'>Generator laporan bulanan otomatis dengan pewarnaan kondisional (Legenda) yang memudahkan proses audit.</div>
         </div>
         """, unsafe_allow_html=True)
