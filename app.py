@@ -546,10 +546,10 @@ if menu == "Tentang Aplikasi":
     with st.expander("Spesifikasi Teknis & Versi"):
         st.markdown(f"""
         * **Framework:** Python Streamlit
-        * **Database:** Google Sheets API (via st.connection)
+        * **Database:** Google Cloud 
         * **System Version:** `{VERSION_TAG}`
         * **Last Build Update:** `{LAST_UPDATED}`
-        * **Developer:** BP3MI Jawa Tengah Team
+        * **Developer:** Prima Ammaray 
         """)
 
 elif menu == "Dashboard":

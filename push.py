@@ -2,7 +2,7 @@ import subprocess
 
 def git_push():
     # 1. Masukkan pesan commit (Tekan Enter langsung untuk pesan default)
-    msg = input("📝 Masukkan pesan commit (default: 'Update App'): ") or "Update App"
+    msg = input("Masukkan pesan commit (default: 'Update App'): ") or "Update App"
 
     try:
         print("🚀 Sedang memproses...")
