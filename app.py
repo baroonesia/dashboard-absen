@@ -492,33 +492,65 @@ if menu == "Tentang Aplikasi":
         st.markdown(clock_html, unsafe_allow_html=True)
     st.markdown("---")
 
+    # KONTEN UTAMA DENGAN PARAMETER YANG DIKEMBALIKAN
     st.markdown("""
     ### 🚀 Enterprise-Grade Attendance Management System
-    Sistem ini dirancang bukan sekadar sebagai alat pencatat, melainkan sebagai **Solusi Terintegrasi** untuk mengatasi kompleksitas manajemen jadwal kerja modern.
-    Menggunakan arsitektur *Cloud-Hybrid*, sistem ini menjamin integritas data, efisiensi waktu rekapitulasi, dan akurasi pelaporan hingga 99.9%.
+    Sistem ini dirancang sebagai **Solusi Terintegrasi** untuk mengelola kompleksitas jadwal kerja secara modern di lingkungan BP3MI Jawa Tengah. 
+    Dengan arsitektur *Cloud-Hybrid*, sistem menjamin efisiensi rekapitulasi dan akurasi pelaporan yang tinggi.
     """)
     st.write("")
 
+    # PARAMETER FITUR UTAMA (3 Kolom)
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.markdown("""<div class='feature-box'><div class='feature-title'>🧠 Anti-Overlap Shift Logic</div><div class='feature-desc'>Algoritma cerdas yang mampu membedakan <b>Shift Beruntun</b>, Lembur Lintas Hari, dan kepulangan pagi.</div></div>""", unsafe_allow_html=True)
+        st.markdown("""
+        <div class='feature-box'>
+            <div class='feature-title'>🧠 Anti-Overlap Logic</div>
+            <div class='feature-desc'>Algoritma cerdas yang mampu membedakan <b>Shift Beruntun</b>, Lembur Lintas Hari, dan kepulangan pagi secara otomatis.</div>
+        </div>
+        """, unsafe_allow_html=True)
     with c2:
-        st.markdown("""<div class='feature-box'><div class='feature-title'>☁️ Cloud Synchronization</div><div class='feature-desc'>Data tersimpan aman di <b>Google Cloud Database</b>. Akses *real-time* dari berbagai perangkat.</div></div>""", unsafe_allow_html=True)
+        st.markdown("""
+        <div class='feature-box'>
+            <div class='feature-title'>☁️ Cloud Sync & Security</div>
+            <div class='feature-desc'>Data tersimpan aman di <b>Google Cloud Database</b>. Memungkinkan akses real-time dan kolaboratif antar admin.</div>
+        </div>
+        """, unsafe_allow_html=True)
     with c3:
-        st.markdown("""<div class='feature-box'><div class='feature-title'>📑 Automated Audit Report</div><div class='feature-desc'>Generator laporan PDF otomatis dengan pewarnaan kondisional yang <b>Siap Audit</b>.</div></div>""", unsafe_allow_html=True)
+        st.markdown("""
+        <div class='feature-box'>
+            <div class='feature-title'>📑 Automated PDF Report</div>
+            <div class='feature-desc'>Generator laporan bulanan otomatis dengan pewarnaan kondisional (Legenda) yang memudahkan proses audit.</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.write("---")
+    
+    # PARAMETER TERMINOLOGI & DETAIL TEKNIS
     st.subheader("📚 Terminologi & Logika Sistem")
     col_term1, col_term2 = st.columns(2)
     with col_term1:
-        st.markdown("""**1. Status: Lengkap (Normal)**\nPegawai masuk dan pulang pada hari yang sama.""")
-        st.markdown("""**2. Status: Lengkap (Shift Malam)**\nPegawai masuk malam (>18:15) dan pulang besok pagi (<13:00).""")
+        st.markdown("""
+        **1. Status: Lengkap (Normal)** Pegawai melakukan absen masuk dan pulang pada rentang waktu yang wajar di hari yang sama.
+        
+        **2. Status: Lengkap (Shift Malam)** Sistem mendeteksi masuk malam (>18:15) dan secara otomatis mencari pasangan absen pulang di keesokan paginya (<13:00).
+        """)
     with col_term2:
-        st.markdown("""**3. Zona Ambigu (13:00-18:14)**\nSatu log di jam ini dianggap lupa absen pagi.""")
-        st.markdown("""**4. Smart Timestamp**\nMencegah data ganda pada lembur/shift ganda.""")
+        st.markdown("""
+        **3. Zona Ambigu (13:00 - 18:14)** Jika hanya ada satu log di jam ini, sistem akan mengidentifikasinya sebagai "Tidak Absen Pagi".
+        
+        **4. Smart Deduplication** Mencegah data ganda jika pegawai melakukan tapping mesin berkali-kali dalam waktu singkat.
+        """)
     
-    with st.expander("🛠️ Spesifikasi Teknis"):
-        st.markdown(f"* Framework: Python Streamlit\n* Version: {VERSION_TAG}\n* Build: {LAST_UPDATED}")
+    # INFO VERSI (PARAMETER SYSTEM)
+    with st.expander("🛠️ Spesifikasi Teknis & Versi"):
+        st.markdown(f"""
+        * **Framework:** Python Streamlit
+        * **Database:** Google Sheets API (via st.connection)
+        * **System Version:** `{VERSION_TAG}`
+        * **Last Build Update:** `{LAST_UPDATED}`
+        * **Developer:** BP3MI Jawa Tengah Team
+        """)
 
 elif menu == "Dashboard":
     col_L, col_R = st.columns([2, 1])
