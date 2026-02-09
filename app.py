@@ -485,7 +485,7 @@ if menu == "Tentang Aplikasi":
         st.markdown(f"""
         <div style='padding-top:10px;'>
             <div class='header-title'>Tentang Aplikasi</div>
-            <div class='header-subtitle'>SIM Presensi Outsourcing BP3MI Jawa Tengah</div>
+            <div class='header-subtitle'>Sistem Presensi Outsourcing BP3MI Jawa Tengah</div>
         </div>
         """, unsafe_allow_html=True)
     with col_R:
@@ -494,7 +494,7 @@ if menu == "Tentang Aplikasi":
 
     # KONTEN UTAMA DENGAN PARAMETER YANG DIKEMBALIKAN
     st.markdown("""
-    Enterprise-Grade Attendance Management System
+    Sistem Informasi Absensi Outsourcing
     Sistem ini dirancang sebagai **Solusi Terintegrasi** untuk mengelola kompleksitas jadwal kerja secara modern di lingkungan BP3MI Jawa Tengah. 
     Dengan arsitektur *Cloud-Hybrid*, sistem menjamin efisiensi rekapitulasi dan akurasi pelaporan yang tinggi.
     """)
@@ -546,7 +546,7 @@ if menu == "Tentang Aplikasi":
     with st.expander("Spesifikasi Teknis & Versi"):
         st.markdown(f"""
         * **Framework:** Python Streamlit
-        * **Database:** Google Cloud 
+        * **Database:** Google Cloud Database
         * **System Version:** `{VERSION_TAG}`
         * **Last Build Update:** `{LAST_UPDATED}`
         * **Developer:** Prima Ammaray 
@@ -629,7 +629,7 @@ elif menu == "Manajemen Data":
             if not df_filt.empty:
                 df_filt['Tanggal'] = df_filt['Tanggal'].dt.date
                 pdf = generate_pdf(df_filt, t, b); add_log("DOWNLOAD", f"PDF {b}/{t}")
-                st.download_button("Unduh PDF", pdf, f"Laporan_{b}_{t}.pdf", "application/pdf")
+                st.download_button("Unduh PDF", pdf, f"Laporan Absensi Outsourcing Bulan {b} Tahun {t}.pdf", "application/pdf")
             else: st.error("Data kosong.")
     if USER_ROLE == "Administrator":
         with mytabs[2]:
