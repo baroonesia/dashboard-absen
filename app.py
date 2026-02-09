@@ -319,11 +319,10 @@ def process_file(file):
 # --- FUNGSI PDF ---
 class PDF(FPDF):
     def header(self):
-        self.set_font('Arial', 'B', 12)
+        self.set_font('Arial', 'B', 10)
         self.cell(0, 10, 'LAPORAN REKAPITULASI ABSENSI OUTSOURCING', 0, 1, 'C')
         self.cell(0, 10, 'BP3MI JAWA TENGAH', 0, 1, 'C')
-        self.cell(0, 10, '', 0, 1, 'C')
-
+        
 def generate_pdf(df_source, year, month):
     df_source = df_source.copy()
     df_source['Nama'] = df_source['Nama'].fillna("Tanpa Nama")
