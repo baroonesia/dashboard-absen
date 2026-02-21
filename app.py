@@ -647,3 +647,5 @@ elif menu == "System Logs":
     if st.button("🔄 Refresh Log"): st.cache_data.clear(); st.rerun()
     log_df = get_logs()
     if not log_df.empty: st.dataframe(log_df.sort_values(by="Waktu", ascending=False), use_container_width=True, hide_index=True)
+
+#coba#
