@@ -30,7 +30,7 @@ def update_version_file():
 
 BUILD_NUMBER = {new_build}
 LAST_UPDATED = "{now}"
-VERSION_TAG = "v2.{new_build}"
+VERSION_TAG = "v1.{new_build}"
 '''
     
     with open(FILE_VERSION, "w") as f:
