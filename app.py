@@ -5,6 +5,7 @@ import calendar
 from fpdf import FPDF
 import plotly.express as px
 from streamlit_gsheets import GSheetsConnection
+import version_info
 import time as time_lib
 # LIBRARY NAVIGASI MODERN
 from streamlit_option_menu import option_menu 
