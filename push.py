@@ -39,20 +39,20 @@ def run_sync():
     
     # 2. Update Versi Dulu
     new_build, tgl = update_version()
-    print(f"✅ Versi naik ke: v1.{new_build}")
+    print(f"✅ Versi naik ke: v2.{new_build}")
 
     try:
         # 3. Git Process
         print("⏳ Mengirim ke GitHub...")
         subprocess.run(["git", "add", "."], check=True)
         
-        full_msg = f"{msg} [Build v1.{new_build}]"
+        full_msg = f"{msg} [Build v2.{new_build}]"
         subprocess.run(["git", "commit", "-m", full_msg], check=True)
         
         # Gunakan -u agar tidak error upstream lagi
         subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
         
-        print(f"\n✨ SUKSES! App v1.{new_build} sudah online.")
+        print(f"\n✨ SUKSES! App v2.{new_build} sudah online.")
     except Exception as e:
         print(f"\n❌ GAGAL: {e}")
 
