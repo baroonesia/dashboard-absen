@@ -1,13 +1,13 @@
 import streamlit as st
 import pandas as pd
-import socket
+from datetime import datetime, timedelta, time
 import calendar
+from fpdf import FPDF
 import plotly.express as px
+from streamlit_gsheets import GSheetsConnection
 import version_info
 import time as time_lib
-from datetime import datetime, timedelta, time
-from fpdf import FPDF
-from streamlit_gsheets import GSheetsConnection
+# LIBRARY NAVIGASI MODERN
 from streamlit_option_menu import option_menu 
 
 # --- IMPORT VERSI OTOMATIS ---
