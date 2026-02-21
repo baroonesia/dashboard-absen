@@ -471,6 +471,16 @@ with st.sidebar:
 
 # --- KONTEN UTAMA ---
 df_global = get_data()
+
+try:
+    df_pegawai = conn.read(worksheet="Data_Pegawai", ttl=0)
+    PEGAWAI_SAH = df_pegawai['Nama'].dropna().tolist()
+except Exception:
+    PEGAWAI_SAH = []
+
+if len(PEGAWAI_SAH) > 0 and not df_global.empty:
+    df_global = df_global[df_global['Nama'].isin(PEGAWAI_SAH)]
+
 now_indo = datetime.utcnow() + timedelta(hours=7)
 str_hari = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"][now_indo.weekday()]
 str_tgl = now_indo.strftime('%d %B %Y')
