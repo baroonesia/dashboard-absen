@@ -281,27 +281,27 @@ def process_file(file):
 
             # SKENARIO 3: SHIFT MALAM
             else: # waktu_log >= 18:15
-                #jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
-                #found_out = False
-                #if log_terakhir:
-                #    durasi = (log_terakhir - log_pertama).total_seconds() / 3600
-                #    if durasi > 3: 
-                #        jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
-                #        status_data = "Lengkap (Normal)"
-                #        used_timestamps.add(log_terakhir)
-                #        found_out = True
+                jam_masuk_fix = log_pertama.strftime('%H:%M:%S')
+                found_out = False
+                if log_terakhir:
+                    durasi = (log_terakhir - log_pertama).total_seconds() / 3600
+                    if durasi > 3: 
+                        jam_pulang_fix = log_terakhir.strftime('%H:%M:%S')
+                        status_data = "Lengkap (Normal)"
+                        used_timestamps.add(log_terakhir)
+                        found_out = True
                 
-                #if not found_out:
-                #    tgl_besok = tgl + timedelta(days=1)
-                #    if tgl_besok in dates:
-                #        logs_besok = group[group['Tanggal_Asli'] == tgl_besok]
-                #        if not logs_besok.empty:
-                #            timestamps_besok = sorted(logs_besok['Timestamp'].tolist())
-                #            potential_out = timestamps_besok[0]
-                #            if potential_out.hour < 13:
-                #                jam_pulang_fix = potential_out.strftime('%H:%M:%S')
-                #                status_data = "Lengkap (Malam)"
-                #                used_timestamps.add(potential_out)
+                if not found_out:
+                    tgl_besok = tgl + timedelta(days=1)
+                    if tgl_besok in dates:
+                        logs_besok = group[group['Tanggal_Asli'] == tgl_besok]
+                        if not logs_besok.empty:
+                            timestamps_besok = sorted(logs_besok['Timestamp'].tolist())
+                            potential_out = timestamps_besok[0]
+                            if potential_out.hour < 13:
+                                jam_pulang_fix = potential_out.strftime('%H:%M:%S')
+                                status_data = "Lengkap (Malam)"
+                                used_timestamps.add(potential_out)
 
             final_data.append({
                 'Nama': nama,
