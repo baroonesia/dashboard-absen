@@ -322,7 +322,7 @@ class PDF(FPDF):
         self.set_font('Arial', 'B', 10)
         self.cell(0, 10, 'LAPORAN REKAPITULASI ABSENSI OUTSOURCING', 0, 1, 'C')
         self.cell(0, 10, 'BP3MI JAWA TENGAH', 0, 1, 'C')
-        
+
 def generate_pdf(df_source, year, month):
     df_source = df_source.copy()
     df_source['Nama'] = df_source['Nama'].fillna("Tanpa Nama")
@@ -407,7 +407,7 @@ def generate_pdf(df_source, year, month):
         pdf.cell(5)
 
     pdf.set_font("Arial", '', 7)
-    draw_legend(144, 238, 144, "Lengkap (Normal)")
+    draw_legend(144, 238, 144, "Lengkap (Shift Normal)")
     draw_legend(173, 216, 230, "Lengkap (Shift Malam)")
     draw_legend(255, 255, 153, "Data Tidak Lengkap")
     draw_legend(255, 153, 153, "Tidak Hadir (Alpa)")
